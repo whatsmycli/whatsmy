@@ -16,8 +16,17 @@ endif()
 # Include directories
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
+# Source files
+set(SOURCES
+    main.cpp
+    src/whatsmy.cpp
+    src/backend/plugin_loader.cpp
+    src/helpers/output.cpp
+    src/helpers/error.cpp
+)
+
 # Executable
-add_executable(whatsmy main.cpp)
+add_executable(whatsmy ${SOURCES})
 
 # Platform-specific libraries
 if(UNIX AND NOT APPLE)
