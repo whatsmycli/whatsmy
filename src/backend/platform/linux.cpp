@@ -6,6 +6,7 @@
 #include <string>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <cstring>
 #include "whatsmy/helpers.h"
 #include "whatsmy/plugin_validator.h"
@@ -35,9 +36,41 @@ public:
         // Load the dynamic library
         void* handle = dlopen(plugin_path.c_str(), RTLD_LAZY);
         if (!handle) {
-            std::string error_msg = "Failed to load plugin: ";
-            error_msg += dlerror();
-            helpers::output::print_error(error_msg);
+            const char* dl_error = dlerror();
+            helpers::output::print_error("Failed to load plugin");
+            helpers::error::error_log("dlopen() failed: " + std::string(dl_error ? dl_error : "unknown error"));
+            
+            // Provide detailed diagnostics
+            std::cout << "\nLoad Failure Diagnostics:\n";
+            std::cout << "  • Plugin path: " << plugin_path << "\n";
+            std::cout << "  • Error: " << (dl_error ? dl_error : "unknown") << "\n";
+            
+            // Common error explanations
+            if (dl_error) {
+                std::string error_str(dl_error);
+                
+                if (error_str.find("cannot open shared object file") != std::string::npos) {
+                    std::cout << "\n💡 This usually means:\n";
+                    std::cout << "  • The plugin file is missing or corrupted\n";
+                    std::cout << "  • File permissions prevent loading\n";
+                    std::cout << "  • The file is not a valid shared library\n";
+                } else if (error_str.find("wrong ELF class") != std::string::npos) {
+                    std::cout << "\n💡 Architecture mismatch detected:\n";
+                    std::cout << "  • Plugin was built for different architecture (32-bit vs 64-bit)\n";
+                    std::cout << "  • Rebuild the plugin for your system architecture\n";
+                } else if (error_str.find("undefined symbol") != std::string::npos) {
+                    std::cout << "\n💡 Missing dependencies:\n";
+                    std::cout << "  • Plugin requires libraries that are not installed\n";
+                    std::cout << "  • Check plugin documentation for required dependencies\n";
+                } else if (error_str.find("cannot allocate memory") != std::string::npos) {
+                    std::cout << "\n💡 System resource issue:\n";
+                    std::cout << "  • Insufficient memory to load plugin\n";
+                    std::cout << "  • Close other applications and try again\n";
+                }
+            }
+            
+            std::cout << "\nFor more help, run with: WHATSMY_DEBUG=1 whatsmy <component>\n";
+            std::cout << "Or see: https://github.com/enxov/whatsmycli/blob/main/docs/troubleshooting.md\n";
             return 1;
         }
 
@@ -53,15 +86,32 @@ public:
         // Check for symbol resolution errors
         const char* dlsym_error = dlerror();
         if (dlsym_error) {
-            std::string error_msg = "Failed to find plugin_run symbol: ";
-            error_msg += dlsym_error;
-            helpers::output::print_error(error_msg);
+            helpers::output::print_error("Failed to find plugin_run symbol");
+            helpers::error::error_log("dlsym() failed: " + std::string(dlsym_error));
+            
+            std::cout << "\nSymbol Resolution Diagnostics:\n";
+            std::cout << "  • Required symbol: plugin_run\n";
+            std::cout << "  • Error: " << dlsym_error << "\n";
+            std::cout << "\n💡 This means:\n";
+            std::cout << "  • Plugin does not export the required 'plugin_run' function\n";
+            std::cout << "  • Plugin may be outdated or incompatible\n";
+            std::cout << "  • Make sure plugin was built with 'extern \"C\"' for plugin_run\n";
+            std::cout << "\nFor plugin developers:\n";
+            std::cout << "  See: https://github.com/enxov/whatsmycli/blob/main/docs/plugin-api.md\n";
+            
             dlclose(handle);
             return 1;
         }
 
         if (!plugin_run) {
-            helpers::output::print_error("plugin_run symbol is null");
+            helpers::output::print_error("plugin_run symbol resolved to null");
+            helpers::error::error_log("plugin_run function pointer is null");
+            
+            std::cout << "\n💡 This is unusual and may indicate:\n";
+            std::cout << "  • Plugin corruption\n";
+            std::cout << "  • Incompatible plugin version\n";
+            std::cout << "  • System or library issue\n";
+            
             dlclose(handle);
             return 1;
         }
@@ -69,17 +119,41 @@ public:
         // Execute the plugin
         int result = 0;
         try {
+            helpers::error::debug_log("Executing plugin_run()");
             result = plugin_run();
+            helpers::error::debug_log("Plugin returned exit code: " + std::to_string(result));
         } catch (const std::exception& e) {
-            std::string error_msg = "Plugin execution failed: ";
-            error_msg += e.what();
-            helpers::output::print_error(error_msg);
+            helpers::output::print_error("Plugin crashed during execution");
+            helpers::error::error_log("Exception caught: " + std::string(e.what()));
+            
+            std::cout << "\nRuntime Error Diagnostics:\n";
+            std::cout << "  • Exception type: std::exception\n";
+            std::cout << "  • Error message: " << e.what() << "\n";
+            std::cout << "\n💡 The plugin encountered an error:\n";
+            std::cout << "  • This is a bug in the plugin code\n";
+            std::cout << "  • Report this to the plugin developer\n";
+            std::cout << "  • Include the error message above\n";
+            
+            helpers::error::debug_log("Stack trace information may be available in debug builds");
+            
             dlclose(handle);
-            return 1;
+            return 4;  // PLUGIN_EXEC_ERROR
         } catch (...) {
-            helpers::output::print_error("Plugin execution failed with unknown exception");
+            helpers::output::print_error("Plugin crashed with unknown exception");
+            helpers::error::error_log("Unknown exception caught during plugin execution");
+            
+            std::cout << "\nRuntime Error Diagnostics:\n";
+            std::cout << "  • Exception type: unknown (not std::exception)\n";
+            std::cout << "\n💡 The plugin crashed unexpectedly:\n";
+            std::cout << "  • This is a serious bug in the plugin\n";
+            std::cout << "  • The plugin may have:\n";
+            std::cout << "    - Accessed invalid memory\n";
+            std::cout << "    - Thrown a non-standard exception\n";
+            std::cout << "    - Triggered undefined behavior\n";
+            std::cout << "  • Report this to the plugin developer immediately\n";
+            
             dlclose(handle);
-            return 1;
+            return 4;  // PLUGIN_EXEC_ERROR
         }
 
         // Unload the library

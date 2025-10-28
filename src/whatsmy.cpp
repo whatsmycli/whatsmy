@@ -74,12 +74,25 @@ namespace {
 void show_help() {
     std::cout << APP_NAME << " - System Information Tool\n"
               << "\nUsage:\n"
-              << "  " << APP_NAME << " <component>  Run plugin for component\n"
-              << "  " << APP_NAME << " help         Show this help message\n"
-              << "  " << APP_NAME << " version      Show version information\n"
+              << "  " << APP_NAME << " <component>           Run plugin for component\n"
+              << "  " << APP_NAME << " --debug <component>   Run with verbose debug output\n"
+              << "  " << APP_NAME << " help                  Show this help message\n"
+              << "  " << APP_NAME << " version               Show version information\n"
+              << "\nOptions:\n"
+              << "  -h, --help       Show this help message\n"
+              << "  -v, --version    Show version information\n"
+              << "  -d, --debug      Enable verbose debug output\n"
               << "\nExamples:\n"
-              << "  " << APP_NAME << " gpu          Display GPU information\n"
-              << "  " << APP_NAME << " cpu          Display CPU information\n"
+              << "  " << APP_NAME << " gpu                   Display GPU information\n"
+              << "  " << APP_NAME << " cpu                   Display CPU information\n"
+              << "  " << APP_NAME << " --debug gpu           Debug GPU plugin loading\n"
+              << "\nEnvironment Variables:\n"
+              << "  WHATSMY_DEBUG=1           Enable debug output\n"
+              << "  WHATSMY_PLUGIN_DIR=<dir>  Override plugin directory\n"
+              << "\nFor more help:\n"
+              << "  • Documentation: https://github.com/enxov/whatsmycli\n"
+              << "  • Troubleshooting: https://github.com/enxov/whatsmycli/blob/main/docs/troubleshooting.md\n"
+              << "  • Plugin API: https://github.com/enxov/whatsmycli/blob/main/docs/plugin-api.md\n"
               << std::endl;
 }
 
@@ -91,6 +104,16 @@ void show_version() {
 }
 
 int run(int argc, char* argv[]) {
+    // Check for debug flag early
+    for (int i = 1; i < argc; i++) {
+        std::string arg = argv[i];
+        if (arg == "--debug" || arg == "-d") {
+            helpers::error::set_log_level(helpers::error::Level::DEBUG);
+            helpers::error::debug_log("Debug mode enabled");
+            break;
+        }
+    }
+    
     // No arguments provided
     if (argc < 2) {
         show_help();
@@ -108,6 +131,16 @@ int run(int argc, char* argv[]) {
     if (command == "version" || command == "--version" || command == "-v") {
         show_version();
         return static_cast<int>(ExitCode::SUCCESS);
+    }
+    
+    // Handle debug flag (skip it if it's the first argument)
+    if (command == "--debug" || command == "-d") {
+        if (argc < 3) {
+            helpers::output::print_error("--debug flag requires a component name");
+            std::cout << "Usage: " << APP_NAME << " --debug <component>\n";
+            return static_cast<int>(ExitCode::INVALID_ARGS);
+        }
+        command = argv[2];
     }
     
     // Route to plugin system
