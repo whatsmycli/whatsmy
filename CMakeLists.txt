@@ -25,6 +25,18 @@ set(SOURCES
     src/helpers/error.cpp
 )
 
+# Platform-specific source files
+if(UNIX AND NOT APPLE)
+    # Linux
+    list(APPEND SOURCES src/backend/platform/linux.cpp)
+elseif(APPLE)
+    # macOS
+    list(APPEND SOURCES src/backend/platform/macos.cpp)
+elseif(WIN32)
+    # Windows
+    list(APPEND SOURCES src/backend/platform/windows.cpp)
+endif()
+
 # Executable
 add_executable(whatsmy ${SOURCES})
 

@@ -13,6 +13,10 @@ void print(const std::string& message) {
     std::cout << message << std::endl;
 }
 
+void print_info(const std::string& message) {
+    std::cout << "Info: " << message << std::endl;
+}
+
 void print_error(const std::string& message) {
     std::cerr << "Error: " << message << std::endl;
 }

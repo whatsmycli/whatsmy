@@ -20,6 +20,11 @@ namespace output {
     void print(const std::string& message);
     
     /**
+     * Print info message
+     */
+    void print_info(const std::string& message);
+    
+    /**
      * Print error message to stderr
      */
     void print_error(const std::string& message);
