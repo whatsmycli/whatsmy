@@ -5,7 +5,10 @@
 #include <dlfcn.h>
 #include <string>
 #include <filesystem>
+#include <fstream>
+#include <cstring>
 #include "whatsmy/helpers.h"
+#include "whatsmy/plugin_validator.h"
 
 namespace whatsmy {
 namespace backend {
@@ -90,6 +93,109 @@ public:
 int load_and_execute_plugin(const std::string& plugin_path) {
     return LinuxPluginLoader::load_and_execute(plugin_path);
 }
+
+/**
+ * Platform-specific plugin validation for Linux
+ */
+namespace validator {
+
+/**
+ * Check if plugin has required symbols using nm or dlopen
+ */
+ValidationResult check_symbols(const std::string& plugin_path) {
+    ValidationResult result;
+    
+    // Try to load the library without executing it to check for symbols
+    void* handle = dlopen(plugin_path.c_str(), RTLD_LAZY | RTLD_NOLOAD);
+    if (!handle) {
+        // Library not already loaded, try to load it
+        handle = dlopen(plugin_path.c_str(), RTLD_LAZY);
+    }
+    
+    if (!handle) {
+        result.add_error("Failed to open plugin for symbol verification: " + std::string(dlerror()));
+        return result;
+    }
+    
+    // Clear any existing errors
+    dlerror();
+    
+    // Check for required symbol: plugin_run
+    void* symbol = dlsym(handle, "plugin_run");
+    const char* dlsym_error = dlerror();
+    
+    if (dlsym_error || !symbol) {
+        std::string error_msg = "Required symbol 'plugin_run' not found in plugin";
+        if (dlsym_error) {
+            error_msg += ": " + std::string(dlsym_error);
+        }
+        result.add_error(error_msg);
+        dlclose(handle);
+        return result;
+    }
+    
+    // Symbol found successfully
+    dlclose(handle);
+    
+    return result;
+}
+
+/**
+ * Verify binary format is ELF for Linux
+ */
+ValidationResult verify_binary_format(const std::string& plugin_path) {
+    ValidationResult result;
+    
+    // Open the file and check for ELF magic number
+    std::ifstream file(plugin_path, std::ios::binary);
+    if (!file) {
+        result.add_error("Failed to open plugin file for binary format verification");
+        return result;
+    }
+    
+    // Read ELF magic number (first 4 bytes should be 0x7F 'E' 'L' 'F')
+    unsigned char magic[4];
+    file.read(reinterpret_cast<char*>(magic), 4);
+    
+    if (!file) {
+        result.add_error("Failed to read plugin file header");
+        return result;
+    }
+    
+    // Check ELF magic number
+    if (magic[0] != 0x7F || magic[1] != 'E' || magic[2] != 'L' || magic[3] != 'F') {
+        result.add_error("Plugin is not a valid ELF binary (expected Linux shared library)");
+        return result;
+    }
+    
+    // Read ELF class (32-bit or 64-bit)
+    unsigned char elf_class;
+    file.read(reinterpret_cast<char*>(&elf_class), 1);
+    
+    if (!file) {
+        result.add_error("Failed to read ELF class information");
+        return result;
+    }
+    
+    // Verify architecture matches system
+    #if defined(__x86_64__) || defined(__aarch64__)
+        // 64-bit system
+        if (elf_class != 2) {  // ELFCLASS64 = 2
+            result.add_warning("Plugin is 32-bit but system is 64-bit (may not be compatible)");
+        }
+    #else
+        // 32-bit system
+        if (elf_class != 1) {  // ELFCLASS32 = 1
+            result.add_warning("Plugin is 64-bit but system is 32-bit (may not be compatible)");
+        }
+    #endif
+    
+    file.close();
+    
+    return result;
+}
+
+} // namespace validator
 
 } // namespace platform
 } // namespace backend
