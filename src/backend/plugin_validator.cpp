@@ -101,16 +101,16 @@ ValidationResult PluginValidator::check_file_access(const std::string& plugin_pa
     }
     
     // Check if file is readable
-    auto perms = std::filesystem::status(plugin_path, ec).permissions();
+    auto file_perms = std::filesystem::status(plugin_path, ec).permissions();
     if (ec) {
         result.add_error("Failed to check plugin file permissions: " + ec.message());
         return result;
     }
     
     using std::filesystem::perms;
-    bool is_readable = (perms & perms::owner_read) != perms::none ||
-                       (perms & perms::group_read) != perms::none ||
-                       (perms & perms::others_read) != perms::none;
+    bool is_readable = (file_perms & perms::owner_read) != perms::none ||
+                       (file_perms & perms::group_read) != perms::none ||
+                       (file_perms & perms::others_read) != perms::none;
     
     if (!is_readable) {
         result.add_error("Plugin file is not readable");
@@ -118,7 +118,7 @@ ValidationResult PluginValidator::check_file_access(const std::string& plugin_pa
     }
     
     // Warn if file is writable by others (security concern)
-    bool world_writable = (perms & perms::others_write) != perms::none;
+    bool world_writable = (file_perms & perms::others_write) != perms::none;
     if (world_writable) {
         result.add_warning("Plugin file is writable by others (potential security risk)");
     }
