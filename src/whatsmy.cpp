@@ -76,17 +76,18 @@ void show_help() {
               << "\nUsage:\n"
               << "  " << APP_NAME << " <component>           Run plugin for component\n"
               << "  " << APP_NAME << " --debug <component>   Run with verbose debug output\n"
-              << "  " << APP_NAME << " help                  Show this help message\n"
-              << "  " << APP_NAME << " version               Show version information\n"
-              << "\nOptions:\n"
+              << "\nCOMMANDS:\n"
+              << "  help                      Show this help message\n"
+              << "  version                   Show version information\n"
+              << "\nOPTIONS:\n"
               << "  -h, --help       Show this help message\n"
               << "  -v, --version    Show version information\n"
               << "  -d, --debug      Enable verbose debug output\n"
-              << "\nExamples:\n"
+              << "\nEXAMPLES:\n"
               << "  " << APP_NAME << " gpu                   Display GPU information\n"
               << "  " << APP_NAME << " cpu                   Display CPU information\n"
               << "  " << APP_NAME << " --debug gpu           Debug GPU plugin loading\n"
-              << "\nEnvironment Variables:\n"
+              << "\nENVIRONMENT VARIABLES:\n"
               << "  WHATSMY_DEBUG=1           Enable debug output\n"
               << "  WHATSMY_PLUGIN_DIR=<dir>  Override plugin directory\n"
               << "\nFor more help:\n"
@@ -141,6 +142,17 @@ int run(int argc, char* argv[]) {
             return static_cast<int>(ExitCode::INVALID_ARGS);
         }
         command = argv[2];
+        
+        // Check for built-in commands again after extracting command from --debug
+        if (command == "help" || command == "--help" || command == "-h") {
+            show_help();
+            return static_cast<int>(ExitCode::SUCCESS);
+        }
+        
+        if (command == "version" || command == "--version" || command == "-v") {
+            show_version();
+            return static_cast<int>(ExitCode::SUCCESS);
+        }
     }
     
     // Route to plugin system
@@ -153,22 +165,31 @@ int run(int argc, char* argv[]) {
         return static_cast<int>(ExitCode::SUCCESS);
     }
     
-    // Handle plugin not found - provide suggestions
-    helpers::output::print_error("Unknown component: '" + command + "'");
-    
-    // Find and display similar commands
-    auto suggestions = find_similar_commands(command);
-    if (!suggestions.empty()) {
-        std::cout << "\nDid you mean one of these?\n";
-        for (const auto& suggestion : suggestions) {
-            std::cout << "  " << APP_NAME << " " << suggestion << "\n";
+    // If plugin was not found, show suggestions before returning
+    if (plugin_result == static_cast<int>(ExitCode::PLUGIN_NOT_FOUND)) {
+        // Find and display similar commands
+        auto suggestions = find_similar_commands(command);
+        if (!suggestions.empty()) {
+            std::cerr << "\nDid you mean one of these?\n";
+            for (const auto& suggestion : suggestions) {
+                std::cerr << "  " << APP_NAME << " " << suggestion << "\n";
+            }
+            std::cerr << std::endl;
         }
-        std::cout << std::endl;
+        
+        std::cerr << "Run '" << APP_NAME << " help' for available commands.\n" << std::endl;
+        return plugin_result;
     }
     
-    std::cout << "Run '" << APP_NAME << " help' for available commands.\n" << std::endl;
+    // For other plugin errors (load error, exec error), return as-is
+    if (plugin_result == static_cast<int>(ExitCode::PLUGIN_LOAD_ERROR) ||
+        plugin_result == static_cast<int>(ExitCode::PLUGIN_EXEC_ERROR)) {
+        return plugin_result;
+    }
     
-    return static_cast<int>(ExitCode::PLUGIN_NOT_FOUND);
+    // Unknown error code - shouldn't happen, but handle gracefully
+    helpers::output::print_error("Unknown error occurred while loading plugin");
+    return static_cast<int>(ExitCode::PLUGIN_LOAD_ERROR);
 }
 
 } // namespace whatsmy

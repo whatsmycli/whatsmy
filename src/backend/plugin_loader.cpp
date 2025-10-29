@@ -65,81 +65,107 @@ int PluginLoader::load_and_run(const std::string& plugin_name) {
         platform_name = "linux";
     #endif
     
-    std::filesystem::path plugin_path = std::filesystem::path(plugin_dir) / 
-                                        plugin_name / 
-                                        (platform_name + extension);
+    std::filesystem::path plugin_path;
+    std::filesystem::path plugin_folder;
+    
+    // Wrap filesystem operations in try-catch to handle extremely long paths
+    try {
+        plugin_path = std::filesystem::path(plugin_dir) / 
+                      plugin_name / 
+                      (platform_name + extension);
+        plugin_folder = std::filesystem::path(plugin_dir) / plugin_name;
+    } catch (const std::filesystem::filesystem_error& e) {
+        helpers::output::print_error("Invalid plugin name: path too long or contains invalid characters");
+        helpers::error::error_log("Filesystem error constructing plugin path: " + std::string(e.what()));
+        return 2; // PLUGIN_NOT_FOUND
+    } catch (const std::exception& e) {
+        helpers::output::print_error("Error constructing plugin path");
+        helpers::error::error_log("Exception: " + std::string(e.what()));
+        return 2; // PLUGIN_NOT_FOUND
+    }
     
     // 4. Check if plugin directory exists
-    std::filesystem::path plugin_folder = std::filesystem::path(plugin_dir) / plugin_name;
-    if (!std::filesystem::exists(plugin_folder)) {
-        helpers::output::print_error("Plugin '" + plugin_name + "' not found");
-        helpers::error::error_log("Plugin directory does not exist: " + plugin_folder.string());
-        
-        // Provide helpful diagnostics
-        std::cout << "\nDiagnostics:\n";
-        std::cout << "  • Plugin directory searched: " << plugin_dir << "\n";
-        std::cout << "  • Expected plugin folder: " << plugin_folder.string() << "\n";
-        
-        // List available plugins if plugin directory exists
-        if (std::filesystem::exists(plugin_dir)) {
-            std::cout << "\nAvailable plugins:\n";
+    try {
+        if (!std::filesystem::exists(plugin_folder)) {
+            helpers::output::print_error("Plugin '" + plugin_name + "' not found");
+            helpers::error::error_log("Plugin directory does not exist: " + plugin_folder.string());
+            
+            // Provide helpful diagnostics
+            std::cout << "\nDiagnostics:\n";
+            std::cout << "  • Plugin directory searched: " << plugin_dir << "\n";
+            std::cout << "  • Expected plugin folder: " << plugin_folder.string() << "\n";
+            
+            // List available plugins if plugin directory exists
+            if (std::filesystem::exists(plugin_dir)) {
+                std::cout << "\nAvailable plugins:\n";
+                bool found_any = false;
+                try {
+                    for (const auto& entry : std::filesystem::directory_iterator(plugin_dir)) {
+                        if (entry.is_directory()) {
+                            std::cout << "  • " << entry.path().filename().string() << "\n";
+                            found_any = true;
+                        }
+                    }
+                } catch (const std::exception& e) {
+                    helpers::error::debug_log("Failed to list plugin directory: " + std::string(e.what()));
+                }
+                
+                if (!found_any) {
+                    std::cout << "  (no plugins installed)\n";
+                }
+            } else {
+                std::cout << "\n⚠️  Plugin directory doesn't exist: " << plugin_dir << "\n";
+                std::cout << "   You may need to install plugins or set WHATSMY_PLUGIN_DIR\n";
+            }
+            
+            std::cout << "\nFor help, see: https://github.com/enxov/whatsmycli/blob/main/docs/troubleshooting.md\n";
+            return 2; // PLUGIN_NOT_FOUND
+        }
+    } catch (const std::filesystem::filesystem_error& e) {
+        helpers::output::print_error("Error checking plugin directory");
+        helpers::error::error_log("Filesystem error: " + std::string(e.what()));
+        return 2; // PLUGIN_NOT_FOUND
+    }
+    
+    // 5. Check if platform-specific plugin binary exists
+    try {
+        if (!std::filesystem::exists(plugin_path)) {
+            helpers::output::print_error("Plugin '" + plugin_name + "' not available for this platform");
+            helpers::error::error_log("Platform-specific binary not found: " + plugin_path.string());
+            
+            // Provide helpful diagnostics
+            std::cout << "\nDiagnostics:\n";
+            std::cout << "  • Plugin: " << plugin_name << "\n";
+            std::cout << "  • Platform: " << platform_name << "\n";
+            std::cout << "  • Expected binary: " << plugin_path.string() << "\n";
+            
+            // List available platform binaries for this plugin
+            std::cout << "\nAvailable builds for '" << plugin_name << "':\n";
             bool found_any = false;
             try {
-                for (const auto& entry : std::filesystem::directory_iterator(plugin_dir)) {
-                    if (entry.is_directory()) {
-                        std::cout << "  • " << entry.path().filename().string() << "\n";
+                for (const auto& entry : std::filesystem::directory_iterator(plugin_folder)) {
+                    if (entry.is_regular_file()) {
+                        std::string filename = entry.path().filename().string();
+                        std::cout << "  • " << filename << "\n";
                         found_any = true;
                     }
                 }
             } catch (const std::exception& e) {
-                helpers::error::debug_log("Failed to list plugin directory: " + std::string(e.what()));
+                helpers::error::debug_log("Failed to list plugin builds: " + std::string(e.what()));
             }
             
             if (!found_any) {
-                std::cout << "  (no plugins installed)\n";
+                std::cout << "  (no platform binaries found)\n";
             }
-        } else {
-            std::cout << "\n⚠️  Plugin directory doesn't exist: " << plugin_dir << "\n";
-            std::cout << "   You may need to install plugins or set WHATSMY_PLUGIN_DIR\n";
+            
+            std::cout << "\nThis plugin may not support your platform yet.\n";
+            std::cout << "For help, see: https://github.com/enxov/whatsmycli/blob/main/docs/troubleshooting.md\n";
+            return 3; // PLUGIN_LOAD_ERROR
         }
-        
-        std::cout << "\nFor help, see: https://github.com/enxov/whatsmycli/blob/main/docs/troubleshooting.md\n";
-        return 1;
-    }
-    
-    // 5. Check if platform-specific plugin binary exists
-    if (!std::filesystem::exists(plugin_path)) {
-        helpers::output::print_error("Plugin '" + plugin_name + "' not available for this platform");
-        helpers::error::error_log("Platform-specific binary not found: " + plugin_path.string());
-        
-        // Provide helpful diagnostics
-        std::cout << "\nDiagnostics:\n";
-        std::cout << "  • Plugin: " << plugin_name << "\n";
-        std::cout << "  • Platform: " << platform_name << "\n";
-        std::cout << "  • Expected binary: " << plugin_path.string() << "\n";
-        
-        // List available platform binaries for this plugin
-        std::cout << "\nAvailable builds for '" << plugin_name << "':\n";
-        bool found_any = false;
-        try {
-            for (const auto& entry : std::filesystem::directory_iterator(plugin_folder)) {
-                if (entry.is_regular_file()) {
-                    std::string filename = entry.path().filename().string();
-                    std::cout << "  • " << filename << "\n";
-                    found_any = true;
-                }
-            }
-        } catch (const std::exception& e) {
-            helpers::error::debug_log("Failed to list plugin builds: " + std::string(e.what()));
-        }
-        
-        if (!found_any) {
-            std::cout << "  (no platform binaries found)\n";
-        }
-        
-        std::cout << "\nThis plugin may not support your platform yet.\n";
-        std::cout << "For help, see: https://github.com/enxov/whatsmycli/blob/main/docs/troubleshooting.md\n";
-        return 1;
+    } catch (const std::filesystem::filesystem_error& e) {
+        helpers::output::print_error("Error checking plugin binary");
+        helpers::error::error_log("Filesystem error: " + std::string(e.what()));
+        return 3; // PLUGIN_LOAD_ERROR
     }
     
     // 6. Validate plugin before loading
@@ -150,7 +176,7 @@ int PluginLoader::load_and_run(const std::string& plugin_name) {
         helpers::output::print_error("Plugin validation failed for '" + plugin_name + "'");
         helpers::output::print_error("Reason: " + validation.error_message);
         helpers::error::error_log("Plugin validation failed: " + validation.error_message);
-        return 1;
+        return 3; // PLUGIN_LOAD_ERROR
     }
     
     // Display any validation warnings
