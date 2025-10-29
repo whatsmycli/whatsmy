@@ -9,6 +9,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Compiler flags (common warnings)
 if(MSVC)
     add_compile_options(/W4)
+    # Prevent Windows.h from defining min/max macros that conflict with std::min/std::max
+    add_compile_definitions(NOMINMAX)
 else()
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()

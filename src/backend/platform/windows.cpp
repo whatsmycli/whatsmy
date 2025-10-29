@@ -2,9 +2,6 @@
 // Copyright (C) 2025 enXov
 // Licensed under GPLv3
 
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
 #include <windows.h>
 #undef ERROR  // Undefine Windows ERROR macro to avoid conflict with helpers::error::Level::ERROR
 #include <string>
