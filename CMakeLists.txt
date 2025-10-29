@@ -25,14 +25,28 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     endif()
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     if(MSVC)
-        add_compile_options(/O2)
+        # Maximum speed optimization
+        add_compile_options(/O2 /GL)
         add_compile_definitions(NDEBUG)
+        # Link-time code generation
+        add_link_options(/LTCG /OPT:REF /OPT:ICF)
     else()
-        add_compile_options(-O3)
+        # Maximum optimization with size consideration
+        add_compile_options(-O3 -flto)
         add_compile_definitions(NDEBUG)
+        
+        # Enable Link-Time Optimization (LTO)
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+        
         # Strip symbols on Unix-like systems
         if(UNIX)
             add_link_options(-s)
+        endif()
+        
+        # Static linking for better portability (Linux only)
+        if(UNIX AND NOT APPLE)
+            # Static link libgcc and libstdc++ for portability
+            add_link_options(-static-libgcc -static-libstdc++)
         endif()
     endif()
 endif()
@@ -84,15 +98,15 @@ install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/whatsmy DESTINATION include)
 
 # Create plugin directory during installation
 if(UNIX)
-    # Linux/macOS: Install to /usr/lib/whatsmy/plugins or /usr/local/lib/whatsmy/plugins
-    install(DIRECTORY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/whatsmy/plugins
+    # Linux/macOS: Install to lib/whatsmy/plugins (relative to install prefix)
+    install(DIRECTORY DESTINATION lib/whatsmy/plugins
             DIRECTORY_PERMISSIONS
                 OWNER_READ OWNER_WRITE OWNER_EXECUTE
                 GROUP_READ GROUP_EXECUTE
                 WORLD_READ WORLD_EXECUTE)
 elseif(WIN32)
-    # Windows: Install to Program Files/whatsmy/plugins
-    install(DIRECTORY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/whatsmy/plugins)
+    # Windows: Install to lib/whatsmy/plugins (relative to install prefix)
+    install(DIRECTORY DESTINATION lib/whatsmy/plugins)
 endif()
 
 # Options
@@ -130,4 +144,45 @@ if(BUILD_TESTING)
     # Add tests subdirectory
     add_subdirectory(tests)
 endif()
+
+# ============================================================================
+# Packaging Configuration (CPack)
+# ============================================================================
+
+include(InstallRequiredSystemLibraries)
+
+# Basic package information
+set(CPACK_PACKAGE_NAME "whatsmy")
+set(CPACK_PACKAGE_VENDOR "enXov")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Fast, minimal, and extensible cross-platform CLI tool for system information")
+set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
+set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
+set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+set(CPACK_PACKAGE_CONTACT "https://github.com/whatsmycli/whatsmy")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
+set(CPACK_RESOURCE_FILE_README "${CMAKE_SOURCE_DIR}/README.md")
+
+# Platform-specific packaging
+if(UNIX AND NOT APPLE)
+    # Linux: TGZ (tar.gz) archives
+    set(CPACK_GENERATOR "TGZ")
+    set(CPACK_SYSTEM_NAME "linux-x64")
+    set(CPACK_PACKAGE_FILE_NAME "whatsmy-${PROJECT_VERSION}-linux-x64")
+    
+elseif(APPLE)
+    # macOS: TGZ (tar.gz) archives
+    set(CPACK_GENERATOR "TGZ")
+    set(CPACK_SYSTEM_NAME "macos-universal")
+    set(CPACK_PACKAGE_FILE_NAME "whatsmy-${PROJECT_VERSION}-macos-universal")
+    
+elseif(WIN32)
+    # Windows: ZIP archives
+    set(CPACK_GENERATOR "ZIP")
+    set(CPACK_SYSTEM_NAME "windows-x64")
+    set(CPACK_PACKAGE_FILE_NAME "whatsmy-${PROJECT_VERSION}-windows-x64")
+endif()
+
+# Include CPack module
+include(CPack)
 
