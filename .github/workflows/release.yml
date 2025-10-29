@@ -6,85 +6,15 @@ on:
       - 'v*.*.*'
 
 jobs:
-  create-release:
-    name: Create GitHub Release
-    runs-on: ubuntu-22.04
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-      release_id: ${{ steps.create_release.outputs.id }}
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-    
-    - name: Get version from tag
-      id: get_version
-      run: |
-        echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-        echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-    
-    - name: Generate changelog
-      id: changelog
-      run: |
-        echo "Generating changelog..."
-        git log $(git describe --tags --abbrev=0 HEAD^)..HEAD --pretty=format:"- %s (%h)" > CHANGELOG.txt
-        echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
-        cat CHANGELOG.txt >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
-    
-    - name: Determine if pre-release
-      id: prerelease
-      run: |
-        if [[ "${{ steps.get_version.outputs.TAG }}" =~ (alpha|beta|rc) ]]; then
-          echo "IS_PRERELEASE=true" >> $GITHUB_OUTPUT
-        else
-          echo "IS_PRERELEASE=false" >> $GITHUB_OUTPUT
-        fi
-    
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ steps.get_version.outputs.TAG }}
-        release_name: Release ${{ steps.get_version.outputs.TAG }}
-        body: |
-          ## whatsmycli ${{ steps.get_version.outputs.TAG }}
-          
-          ### Installation
-          
-          **Linux/macOS:**
-          ```bash
-          curl -sSL https://raw.githubusercontent.com/whatsmycli/whatsmy/main/install.sh | bash
-          ```
-          
-          **Windows PowerShell:**
-          ```powershell
-          irm https://raw.githubusercontent.com/whatsmycli/whatsmy/main/install.ps1 | iex
-          ```
-          
-          **Manual Installation:**
-          Download the appropriate binary for your platform below and extract it to your PATH.
-          
-          ### Changes
-          ${{ steps.changelog.outputs.CHANGELOG }}
-          
-          ### Checksums
-          See `checksums.txt` for SHA256 checksums of all release artifacts.
-        draft: false
-        prerelease: ${{ steps.prerelease.outputs.IS_PRERELEASE }}
-
   build-linux:
     name: Build Linux Release
     runs-on: ubuntu-22.04
-    needs: create-release
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
     
     - name: Install dependencies
       run: |
@@ -116,37 +46,26 @@ jobs:
         cd build
         sha256sum whatsmy-linux-x64.tar.gz > whatsmy-linux-x64.tar.gz.sha256
     
-    - name: Upload Linux Package
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
       with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: build/whatsmy-linux-x64.tar.gz
-        asset_name: whatsmy-linux-x64.tar.gz
-        asset_content_type: application/gzip
-    
-    - name: Upload Linux Checksum
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: build/whatsmy-linux-x64.tar.gz.sha256
-        asset_name: whatsmy-linux-x64.tar.gz.sha256
-        asset_content_type: text/plain
+        name: linux-release
+        path: |
+          build/whatsmy-linux-x64.tar.gz
+          build/whatsmy-linux-x64.tar.gz.sha256
 
   build-windows:
     name: Build Windows Release
     runs-on: windows-2022
-    needs: create-release
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
     
     - name: Setup MSVC
-      uses: microsoft/setup-msbuild@v1.1
+      uses: microsoft/setup-msbuild@v2
     
     - name: Configure CMake
       run: |
@@ -169,34 +88,23 @@ jobs:
         $hash = Get-FileHash -Algorithm SHA256 whatsmy-windows-x64.zip
         "$($hash.Hash.ToLower())  whatsmy-windows-x64.zip" | Out-File -FilePath whatsmy-windows-x64.zip.sha256 -Encoding ASCII
     
-    - name: Upload Windows Package
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
       with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: build/whatsmy-windows-x64.zip
-        asset_name: whatsmy-windows-x64.zip
-        asset_content_type: application/zip
-    
-    - name: Upload Windows Checksum
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: build/whatsmy-windows-x64.zip.sha256
-        asset_name: whatsmy-windows-x64.zip.sha256
-        asset_content_type: text/plain
+        name: windows-release
+        path: |
+          build/whatsmy-windows-x64.zip
+          build/whatsmy-windows-x64.zip.sha256
 
   build-macos:
     name: Build macOS Release (Universal Binary)
     runs-on: macos-13
-    needs: create-release
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
     
     - name: Install dependencies
       run: brew install cmake
@@ -232,70 +140,107 @@ jobs:
         cd build
         shasum -a 256 whatsmy-macos-universal.tar.gz > whatsmy-macos-universal.tar.gz.sha256
     
-    - name: Upload macOS Package
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
       with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: build/whatsmy-macos-universal.tar.gz
-        asset_name: whatsmy-macos-universal.tar.gz
-        asset_content_type: application/gzip
-    
-    - name: Upload macOS Checksum
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: build/whatsmy-macos-universal.tar.gz.sha256
-        asset_name: whatsmy-macos-universal.tar.gz.sha256
-        asset_content_type: text/plain
+        name: macos-release
+        path: |
+          build/whatsmy-macos-universal.tar.gz
+          build/whatsmy-macos-universal.tar.gz.sha256
 
-  create-checksums:
-    name: Create Combined Checksums File
+  create-release:
+    name: Create GitHub Release
     runs-on: ubuntu-22.04
-    needs: [create-release, build-linux, build-windows, build-macos]
+    needs: [build-linux, build-windows, build-macos]
+    permissions:
+      contents: write
     
     steps:
-    - name: Download all checksums
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+    
+    - name: Organize artifacts
       run: |
-        mkdir -p checksums
-        cd checksums
+        mkdir -p release-files
         
-        # Download individual checksum files
-        curl -L -H "Accept: application/octet-stream" \
-          "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/whatsmy-linux-x64.tar.gz.sha256" \
-          -o linux.sha256
+        # Move all files to release-files directory
+        find artifacts -type f -name "*.tar.gz" -o -name "*.zip" -o -name "*.sha256" | while read file; do
+          mv "$file" release-files/
+        done
         
-        curl -L -H "Accept: application/octet-stream" \
-          "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/whatsmy-windows-x64.zip.sha256" \
-          -o windows.sha256
+        # Create combined checksums.txt
+        cd release-files
+        cat *.sha256 > checksums.txt
         
-        curl -L -H "Accept: application/octet-stream" \
-          "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/whatsmy-macos-universal.tar.gz.sha256" \
-          -o macos.sha256
-        
-        # Combine into single checksums.txt
-        cat linux.sha256 windows.sha256 macos.sha256 > checksums.txt
+        # List all files
+        ls -lh
     
-    - name: Upload Combined Checksums
-      uses: actions/upload-release-asset@v1
+    - name: Generate changelog
+      id: changelog
+      run: |
+        echo "Generating changelog..."
+        PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        
+        if [ -z "$PREVIOUS_TAG" ]; then
+          echo "CHANGELOG=Initial release" >> $GITHUB_OUTPUT
+        else
+          CHANGELOG=$(git log ${PREVIOUS_TAG}..HEAD --pretty=format:"- %s (%h)" | head -20)
+          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Determine if pre-release
+      id: prerelease
+      run: |
+        if [[ "${{ github.ref_name }}" =~ (alpha|beta|rc) ]]; then
+          echo "IS_PRERELEASE=true" >> $GITHUB_OUTPUT
+        else
+          echo "IS_PRERELEASE=false" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        name: Release ${{ github.ref_name }}
+        body: |
+          ## whatsmycli ${{ github.ref_name }}
+          
+          ### Installation
+          
+          **Linux/macOS:**
+          ```bash
+          curl -sSL https://raw.githubusercontent.com/whatsmycli/whatsmy/main/install.sh | bash
+          ```
+          
+          **Windows PowerShell:**
+          ```powershell
+          irm https://raw.githubusercontent.com/whatsmycli/whatsmy/main/install.ps1 | iex
+          ```
+          
+          **Manual Installation:**
+          Download the appropriate binary for your platform below and extract it to your PATH.
+          
+          ### Changes
+          ${{ steps.changelog.outputs.CHANGELOG }}
+          
+          ### Checksums
+          See `checksums.txt` for SHA256 checksums of all release artifacts.
+        files: release-files/*
+        draft: false
+        prerelease: ${{ steps.prerelease.outputs.IS_PRERELEASE }}
+        fail_on_unmatched_files: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: checksums/checksums.txt
-        asset_name: checksums.txt
-        asset_content_type: text/plain
-
-  verify-release:
-    name: Verify Release
-    runs-on: ubuntu-22.04
-    needs: [create-release, build-linux, build-windows, build-macos, create-checksums]
     
-    steps:
-    - name: Summary
+    - name: Release Summary
       run: |
         echo "✅ Release ${{ github.ref_name }} created successfully!"
         echo ""
@@ -306,4 +251,3 @@ jobs:
         echo "  - whatsmy-windows-x64.zip"
         echo "  - whatsmy-macos-universal.tar.gz"
         echo "  - checksums.txt"
-
