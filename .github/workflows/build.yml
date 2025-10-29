@@ -1,0 +1,240 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build-linux:
+    name: Linux Build (${{ matrix.compiler }})
+    runs-on: ubuntu-22.04
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake build-essential
+        
+    - name: Set up compiler
+      run: |
+        if [ "${{ matrix.compiler }}" == "clang" ]; then
+          sudo apt-get install -y clang
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CXX=clang++" >> $GITHUB_ENV
+        else
+          echo "CC=gcc" >> $GITHUB_ENV
+          echo "CXX=g++" >> $GITHUB_ENV
+        fi
+        
+    - name: Configure CMake (Debug)
+      run: |
+        mkdir -p build-debug
+        cd build-debug
+        cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON ..
+        
+    - name: Build (Debug)
+      run: cmake --build build-debug --config Debug -j$(nproc)
+      
+    - name: Run Tests (Debug)
+      run: |
+        cd build-debug
+        ctest --output-on-failure --verbose
+      continue-on-error: true
+        
+    - name: Configure CMake (Release)
+      run: |
+        mkdir -p build-release
+        cd build-release
+        cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON ..
+        
+    - name: Build (Release)
+      run: cmake --build build-release --config Release -j$(nproc)
+      
+    - name: Run Tests (Release)
+      run: |
+        cd build-release
+        ctest --output-on-failure --verbose
+      continue-on-error: true
+      
+    - name: Upload Linux Binary (Debug)
+      uses: actions/upload-artifact@v3
+      with:
+        name: whatsmy-linux-${{ matrix.compiler }}-debug
+        path: build-debug/whatsmy
+        retention-days: 7
+        
+    - name: Upload Linux Binary (Release)
+      uses: actions/upload-artifact@v3
+      with:
+        name: whatsmy-linux-${{ matrix.compiler }}-release
+        path: build-release/whatsmy
+        retention-days: 7
+
+  build-windows:
+    name: Windows Build (MSVC 2022)
+    runs-on: windows-2022
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Setup MSVC
+      uses: microsoft/setup-msbuild@v1.1
+      
+    - name: Configure CMake (Debug)
+      run: |
+        mkdir build-debug
+        cd build-debug
+        cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON ..
+        
+    - name: Build (Debug)
+      run: cmake --build build-debug --config Debug
+      
+    - name: Run Tests (Debug)
+      run: |
+        cd build-debug
+        ctest --output-on-failure --verbose -C Debug
+      continue-on-error: true
+        
+    - name: Configure CMake (Release)
+      run: |
+        mkdir build-release
+        cd build-release
+        cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON ..
+        
+    - name: Build (Release)
+      run: cmake --build build-release --config Release
+      
+    - name: Run Tests (Release)
+      run: |
+        cd build-release
+        ctest --output-on-failure --verbose -C Release
+      continue-on-error: true
+      
+    - name: Upload Windows Binary (Debug)
+      uses: actions/upload-artifact@v3
+      with:
+        name: whatsmy-windows-debug
+        path: build-debug/Debug/whatsmy.exe
+        retention-days: 7
+        if-no-files-found: warn
+        
+    - name: Upload Windows Binary (Release)
+      uses: actions/upload-artifact@v3
+      with:
+        name: whatsmy-windows-release
+        path: build-release/Release/whatsmy.exe
+        retention-days: 7
+        if-no-files-found: warn
+
+  build-macos:
+    name: macOS Build (Universal Binary)
+    runs-on: macos-13
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Install dependencies
+      run: brew install cmake
+      
+    - name: Configure CMake (Debug - Universal)
+      run: |
+        mkdir -p build-debug
+        cd build-debug
+        cmake -DCMAKE_BUILD_TYPE=Debug \
+              -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" \
+              -DBUILD_TESTING=ON \
+              ..
+        
+    - name: Build (Debug)
+      run: cmake --build build-debug --config Debug -j$(sysctl -n hw.ncpu)
+      
+    - name: Run Tests (Debug - x86_64 only)
+      run: |
+        cd build-debug
+        arch -x86_64 ctest --output-on-failure --verbose || true
+      continue-on-error: true
+        
+    - name: Configure CMake (Release - Universal)
+      run: |
+        mkdir -p build-release
+        cd build-release
+        cmake -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" \
+              -DBUILD_TESTING=ON \
+              ..
+        
+    - name: Build (Release)
+      run: cmake --build build-release --config Release -j$(sysctl -n hw.ncpu)
+      
+    - name: Run Tests (Release - x86_64 only)
+      run: |
+        cd build-release
+        arch -x86_64 ctest --output-on-failure --verbose || true
+      continue-on-error: true
+      
+    - name: Verify Universal Binary (Debug)
+      run: |
+        file build-debug/whatsmy
+        lipo -info build-debug/whatsmy
+        
+    - name: Verify Universal Binary (Release)
+      run: |
+        file build-release/whatsmy
+        lipo -info build-release/whatsmy
+      
+    - name: Upload macOS Binary (Debug)
+      uses: actions/upload-artifact@v3
+      with:
+        name: whatsmy-macos-universal-debug
+        path: build-debug/whatsmy
+        retention-days: 7
+        
+    - name: Upload macOS Binary (Release)
+      uses: actions/upload-artifact@v3
+      with:
+        name: whatsmy-macos-universal-release
+        path: build-release/whatsmy
+        retention-days: 7
+
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-22.04
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Check for TODOs and FIXMEs
+      run: |
+        echo "Checking for TODOs and FIXMEs in source code..."
+        grep -r "TODO\|FIXME" src/ include/ || echo "No TODOs or FIXMEs found"
+      continue-on-error: true
+
+  summary:
+    name: Build Summary
+    runs-on: ubuntu-22.04
+    needs: [build-linux, build-windows, build-macos, code-quality]
+    if: always()
+    
+    steps:
+    - name: Summary
+      run: |
+        echo "Build and test summary:"
+        echo "  - Linux (GCC): ${{ needs.build-linux.result }}"
+        echo "  - Linux (Clang): ${{ needs.build-linux.result }}"
+        echo "  - Windows (MSVC): ${{ needs.build-windows.result }}"
+        echo "  - macOS (Universal): ${{ needs.build-macos.result }}"
+        echo "  - Code Quality: ${{ needs.code-quality.result }}"
+

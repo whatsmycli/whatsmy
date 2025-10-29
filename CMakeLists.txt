@@ -104,4 +104,30 @@ message(STATUS "whatsmy version: ${PROJECT_VERSION}")
 message(STATUS "C++ standard: ${CMAKE_CXX_STANDARD}")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "Enable plugins: ${ENABLE_PLUGINS}")
+message(STATUS "Build testing: ${BUILD_TESTING}")
+
+# Testing configuration
+if(BUILD_TESTING)
+    enable_testing()
+    
+    # Fetch Google Test
+    include(FetchContent)
+    FetchContent_Declare(
+        googletest
+        GIT_REPOSITORY https://github.com/google/googletest.git
+        GIT_TAG v1.14.0
+    )
+    
+    # For Windows: Prevent overriding the parent project's compiler/linker settings
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    
+    # Make Google Test available
+    FetchContent_MakeAvailable(googletest)
+    
+    # Include Google Test's CMake utilities
+    include(GoogleTest)
+    
+    # Add tests subdirectory
+    add_subdirectory(tests)
+endif()
 
