@@ -48,7 +48,7 @@ jobs:
     - name: Run Tests (Debug)
       run: |
         cd build-debug
-        ctest --output-on-failure --verbose
+        ctest --output-on-failure
       continue-on-error: true
         
     - name: Configure CMake (Release)
@@ -63,7 +63,7 @@ jobs:
     - name: Run Tests (Release)
       run: |
         cd build-release
-        ctest --output-on-failure --verbose
+        ctest --output-on-failure
       continue-on-error: true
       
     - name: Upload Linux Binary (Debug)
@@ -103,7 +103,7 @@ jobs:
     - name: Run Tests (Debug)
       run: |
         cd build-debug
-        ctest --output-on-failure --verbose -C Debug
+        ctest --output-on-failure -C Debug
       continue-on-error: true
         
     - name: Configure CMake (Release)
@@ -118,7 +118,7 @@ jobs:
     - name: Run Tests (Release)
       run: |
         cd build-release
-        ctest --output-on-failure --verbose -C Release
+        ctest --output-on-failure -C Release
       continue-on-error: true
       
     - name: Upload Windows Binary (Debug)
@@ -163,7 +163,7 @@ jobs:
     - name: Run Tests (Debug - x86_64 only)
       run: |
         cd build-debug
-        arch -x86_64 ctest --output-on-failure --verbose || true
+        arch -x86_64 ctest --output-on-failure || true
       continue-on-error: true
         
     - name: Configure CMake (Release - Universal)
@@ -181,7 +181,7 @@ jobs:
     - name: Run Tests (Release - x86_64 only)
       run: |
         cd build-release
-        arch -x86_64 ctest --output-on-failure --verbose || true
+        arch -x86_64 ctest --output-on-failure || true
       continue-on-error: true
       
     - name: Verify Universal Binary (Debug)
