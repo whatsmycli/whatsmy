@@ -11,6 +11,11 @@
 #include <cstdlib>
 #include <string>
 
+#ifndef _WIN32
+#include <unistd.h>
+#include <fcntl.h>
+#endif
+
 namespace fs = std::filesystem;
 
 // Test fixture for plugin execution tests
@@ -28,15 +33,55 @@ protected:
         setenv("WHATSMY_PLUGIN_DIR", test_plugin_dir.string().c_str(), 1);
         #endif
         
-        // Redirect stdout and stderr
+        // Redirect stdout and stderr at both stream and file descriptor level
         old_stdout = std::cout.rdbuf();
         std::cout.rdbuf(captured_stdout.rdbuf());
         old_stderr = std::cerr.rdbuf();
         std::cerr.rdbuf(captured_stderr.rdbuf());
+        
+        #ifndef _WIN32
+        // Also redirect file descriptors for plugins that use raw stdout/stderr
+        stdout_pipe[0] = -1;
+        stdout_pipe[1] = -1;
+        stderr_pipe[0] = -1;
+        stderr_pipe[1] = -1;
+        
+        // Save original file descriptors
+        saved_stdout_fd = dup(STDOUT_FILENO);
+        saved_stderr_fd = dup(STDERR_FILENO);
+        
+        // Create pipes and redirect
+        if (pipe(stdout_pipe) == 0) {
+            dup2(stdout_pipe[1], STDOUT_FILENO);
+            fcntl(stdout_pipe[0], F_SETFL, O_NONBLOCK); // Non-blocking read
+        }
+        if (pipe(stderr_pipe) == 0) {
+            dup2(stderr_pipe[1], STDERR_FILENO);
+            fcntl(stderr_pipe[0], F_SETFL, O_NONBLOCK); // Non-blocking read
+        }
+        #endif
     }
     
     void TearDown() override {
-        // Restore stdout and stderr
+        #ifndef _WIN32
+        // Restore original file descriptors
+        if (saved_stdout_fd >= 0) {
+            dup2(saved_stdout_fd, STDOUT_FILENO);
+            close(saved_stdout_fd);
+        }
+        if (saved_stderr_fd >= 0) {
+            dup2(saved_stderr_fd, STDERR_FILENO);
+            close(saved_stderr_fd);
+        }
+        
+        // Close pipes
+        if (stdout_pipe[0] >= 0) close(stdout_pipe[0]);
+        if (stdout_pipe[1] >= 0) close(stdout_pipe[1]);
+        if (stderr_pipe[0] >= 0) close(stderr_pipe[0]);
+        if (stderr_pipe[1] >= 0) close(stderr_pipe[1]);
+        #endif
+        
+        // Restore stdout and stderr streams
         std::cout.rdbuf(old_stdout);
         std::cerr.rdbuf(old_stderr);
         
@@ -54,11 +99,55 @@ protected:
     }
     
     std::string GetStdout() {
-        return captured_stdout.str();
+        std::string result = captured_stdout.str();
+        
+        #ifndef _WIN32
+        // Also read from pipe (for plugin output)
+        if (stdout_pipe[0] >= 0 && stdout_pipe[1] >= 0) {
+            // Flush and sync stdout first
+            fflush(stdout);
+            fsync(STDOUT_FILENO);
+            
+            // Close write end to allow read to complete
+            close(stdout_pipe[1]);
+            stdout_pipe[1] = -1;
+            
+            char buffer[4096];
+            ssize_t bytes_read;
+            while ((bytes_read = read(stdout_pipe[0], buffer, sizeof(buffer) - 1)) > 0) {
+                buffer[bytes_read] = '\0';
+                result += buffer;
+            }
+        }
+        #endif
+        
+        return result;
     }
     
     std::string GetStderr() {
-        return captured_stderr.str();
+        std::string result = captured_stderr.str();
+        
+        #ifndef _WIN32
+        // Also read from pipe (for plugin output)
+        if (stderr_pipe[0] >= 0 && stderr_pipe[1] >= 0) {
+            // Flush and sync stderr first
+            fflush(stderr);
+            fsync(STDERR_FILENO);
+            
+            // Close write end to allow read to complete
+            close(stderr_pipe[1]);
+            stderr_pipe[1] = -1;
+            
+            char buffer[4096];
+            ssize_t bytes_read;
+            while ((bytes_read = read(stderr_pipe[0], buffer, sizeof(buffer) - 1)) > 0) {
+                buffer[bytes_read] = '\0';
+                result += buffer;
+            }
+        }
+        #endif
+        
+        return result;
     }
     
     void ClearOutput() {
@@ -66,6 +155,18 @@ protected:
         captured_stdout.clear();
         captured_stderr.str("");
         captured_stderr.clear();
+        
+        #ifndef _WIN32
+        // Clear pipes
+        if (stdout_pipe[0] >= 0) {
+            char buffer[4096];
+            while (read(stdout_pipe[0], buffer, sizeof(buffer)) > 0);
+        }
+        if (stderr_pipe[0] >= 0) {
+            char buffer[4096];
+            while (read(stderr_pipe[0], buffer, sizeof(buffer)) > 0);
+        }
+        #endif
     }
     
     // Create a test plugin with custom code
@@ -156,6 +257,13 @@ private:
     std::streambuf* old_stderr;
     std::stringstream captured_stdout;
     std::stringstream captured_stderr;
+    
+    #ifndef _WIN32
+    int stdout_pipe[2];
+    int stderr_pipe[2];
+    int saved_stdout_fd;
+    int saved_stderr_fd;
+    #endif
 };
 
 // ===== Plugin Loading Tests =====
