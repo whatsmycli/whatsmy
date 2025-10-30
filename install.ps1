@@ -80,30 +80,43 @@ function Select-InstallMode {
         Write-Info "Installing system-wide to $InstallDir"
     }
     else {
-        Write-Warning "Not running as Administrator"
-        Write-Host ""
-        Write-Host "Installation options:"
-        Write-Host "  1) Install for current user only (no admin required)"
-        Write-Host "  2) Exit and restart as Administrator"
-        Write-Host ""
-        
-        $choice = Read-Host "Choose installation mode [1/2]"
-        
-        switch ($choice) {
-            "1" {
-                $script:InstallMode = "user"
-                $script:InstallDir = $InstallDirUser
-                $script:PluginDir = $PluginDirUser
-                Write-Info "Installing for current user to $InstallDir"
+        # Check if running in non-interactive mode (piped execution)
+        if ([Environment]::UserInteractive -and -not [Console]::IsInputRedirected) {
+            # Interactive mode: ask user
+            Write-Warning "Not running as Administrator"
+            Write-Host ""
+            Write-Host "Installation options:"
+            Write-Host "  1) Install for current user only (no admin required)"
+            Write-Host "  2) Exit and restart as Administrator"
+            Write-Host ""
+            
+            $choice = Read-Host "Choose installation mode [1/2]"
+            
+            switch ($choice) {
+                "1" {
+                    $script:InstallMode = "user"
+                    $script:InstallDir = $InstallDirUser
+                    $script:PluginDir = $PluginDirUser
+                    Write-Info "Installing for current user to $InstallDir"
+                }
+                "2" {
+                    Write-Info "Please restart this script as Administrator"
+                    exit 0
+                }
+                default {
+                    Write-Error "Invalid choice"
+                    exit 1
+                }
             }
-            "2" {
-                Write-Info "Please restart this script as Administrator"
-                exit 0
-            }
-            default {
-                Write-Error "Invalid choice"
-                exit 1
-            }
+        }
+        else {
+            # Non-interactive mode: default to user installation
+            Write-Warning "Not running as Administrator"
+            Write-Info "Running in non-interactive mode, defaulting to user installation"
+            $script:InstallMode = "user"
+            $script:InstallDir = $InstallDirUser
+            $script:PluginDir = $PluginDirUser
+            Write-Info "Installing for current user to $InstallDir"
         }
     }
 }
@@ -157,24 +170,33 @@ function Download-AndInstall {
             New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
         }
         
-        # Install binary
+        # Find the binary in the extracted archive
         Write-Info "Installing binary to $InstallDir..."
-        $binarySource = Join-Path $tempDir "bin\$BinaryName"
         $binaryDest = Join-Path $InstallDir $BinaryName
         
-        if (Test-Path $binarySource) {
-            Copy-Item -Path $binarySource -Destination $binaryDest -Force
+        # Try multiple possible locations for the binary
+        $possiblePaths = @(
+            (Join-Path $tempDir "bin\$BinaryName"),                                    # Standard location
+            (Join-Path $tempDir $BinaryName),                                          # Root of archive
+            (Join-Path $tempDir "Release\$BinaryName"),                                # CMake Release build dir
+            (Get-ChildItem -Path $tempDir -Recurse -Filter $BinaryName -File | Select-Object -First 1 -ExpandProperty FullName)  # Recursive search
+        )
+        
+        $binaryFound = $false
+        foreach ($path in $possiblePaths) {
+            if ($path -and (Test-Path $path)) {
+                Write-Info "Found binary at: $path"
+                Copy-Item -Path $path -Destination $binaryDest -Force
+                $binaryFound = $true
+                break
+            }
         }
-        else {
-            # Binary might be directly in the archive
-            $binarySource = Join-Path $tempDir $BinaryName
-            if (Test-Path $binarySource) {
-                Copy-Item -Path $binarySource -Destination $binaryDest -Force
-            }
-            else {
-                Write-Error "Could not find $BinaryName in archive"
-                exit 1
-            }
+        
+        if (-not $binaryFound) {
+            Write-Error "Could not find $BinaryName in archive"
+            Write-Info "Archive contents:"
+            Get-ChildItem -Path $tempDir -Recurse | ForEach-Object { Write-Host "  $($_.FullName)" }
+            exit 1
         }
         
         Write-Success "Binary installed to $binaryDest"

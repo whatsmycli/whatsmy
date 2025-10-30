@@ -99,34 +99,46 @@ determine_install_mode() {
         PLUGIN_DIR="$PLUGIN_DIR_SYSTEM"
         print_info "Installing system-wide to $INSTALL_DIR"
     else
-        # Ask user preference
-        print_warning "No write permission to $INSTALL_DIR_SYSTEM"
-        echo ""
-        echo "Installation options:"
-        echo "  1) Install for current user only (no sudo required)"
-        echo "  2) Install system-wide (requires sudo)"
-        echo ""
-        read -p "Choose installation mode [1/2]: " choice
-        
-        case "$choice" in
-            1)
-                INSTALL_MODE="user"
-                INSTALL_DIR="$INSTALL_DIR_USER"
-                PLUGIN_DIR="$PLUGIN_DIR_USER"
-                mkdir -p "$INSTALL_DIR"
-                print_info "Installing for current user to $INSTALL_DIR"
-                ;;
-            2)
-                INSTALL_MODE="system"
-                INSTALL_DIR="$INSTALL_DIR_SYSTEM"
-                PLUGIN_DIR="$PLUGIN_DIR_SYSTEM"
-                print_info "Installing system-wide to $INSTALL_DIR (will use sudo)"
-                ;;
-            *)
-                print_error "Invalid choice"
-                exit 1
-                ;;
-        esac
+        # Check if running in non-interactive mode (piped from curl/wget)
+        if [ ! -t 0 ]; then
+            # Non-interactive mode: default to user installation
+            print_warning "No write permission to $INSTALL_DIR_SYSTEM"
+            print_info "Running in non-interactive mode, defaulting to user installation"
+            INSTALL_MODE="user"
+            INSTALL_DIR="$INSTALL_DIR_USER"
+            PLUGIN_DIR="$PLUGIN_DIR_USER"
+            mkdir -p "$INSTALL_DIR"
+            print_info "Installing for current user to $INSTALL_DIR"
+        else
+            # Interactive mode: ask user preference
+            print_warning "No write permission to $INSTALL_DIR_SYSTEM"
+            echo ""
+            echo "Installation options:"
+            echo "  1) Install for current user only (no sudo required)"
+            echo "  2) Install system-wide (requires sudo)"
+            echo ""
+            read -p "Choose installation mode [1/2]: " choice
+            
+            case "$choice" in
+                1)
+                    INSTALL_MODE="user"
+                    INSTALL_DIR="$INSTALL_DIR_USER"
+                    PLUGIN_DIR="$PLUGIN_DIR_USER"
+                    mkdir -p "$INSTALL_DIR"
+                    print_info "Installing for current user to $INSTALL_DIR"
+                    ;;
+                2)
+                    INSTALL_MODE="system"
+                    INSTALL_DIR="$INSTALL_DIR_SYSTEM"
+                    PLUGIN_DIR="$PLUGIN_DIR_SYSTEM"
+                    print_info "Installing system-wide to $INSTALL_DIR (will use sudo)"
+                    ;;
+                *)
+                    print_error "Invalid choice"
+                    exit 1
+                    ;;
+            esac
+        fi
     fi
 }
 
