@@ -13,6 +13,24 @@ whatsmy help     # Show help
 whatsmy version  # Show version
 ```
 
+## Quick Start
+
+After installation, you can browse and install plugins:
+
+```bash
+# List available plugins
+whatsmy plugin list
+
+# Install a plugin
+whatsmy plugin install gpu
+
+# Use the plugin
+whatsmy gpu
+
+# See all installed plugins
+whatsmy plugin installed
+```
+
 ## Installation
 
 ### One-Line Installation (Recommended)
@@ -89,6 +107,69 @@ whatsmy/
 ```
 
 For detailed architecture documentation, see [docs/architecture.md](docs/architecture.md).
+
+## Plugin Management
+
+**whatsmy** includes a built-in plugin manager for easy plugin discovery and installation.
+
+### Browse Available Plugins
+
+```bash
+whatsmy plugin list
+```
+
+This fetches the latest plugin list from the repository and displays all available plugins with descriptions and supported platforms.
+
+### Install Plugins
+
+```bash
+whatsmy plugin install <name>
+```
+
+Example:
+```bash
+whatsmy plugin install gpu
+```
+
+The installer will:
+- Download the correct binary for your platform
+- Install to the plugin directory
+- Verify with SHA256 checksum (when available)
+- Set proper file permissions
+
+### Manage Installed Plugins
+
+```bash
+# View installed plugins
+whatsmy plugin installed
+
+# Remove a plugin
+whatsmy plugin remove gpu
+
+# Update a plugin to the latest version
+whatsmy plugin update gpu
+
+# Search for plugins
+whatsmy plugin search graphics
+```
+
+### Plugin Directory
+
+Plugins are installed to:
+- **Linux/macOS**: `/usr/lib/whatsmy/plugins/`
+- **Windows**: `C:\Program Files\whatsmy\plugins\`
+
+You can override this with the `WHATSMY_PLUGIN_DIR` environment variable:
+```bash
+export WHATSMY_PLUGIN_DIR=~/.whatsmy/plugins
+```
+
+### Available Plugins
+
+Check the [plugins repository](https://github.com/whatsmycli/plugins) for the current list of available plugins, or run:
+```bash
+whatsmy plugin list
+```
 
 ## Contributing
 
