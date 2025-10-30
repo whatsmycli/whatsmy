@@ -52,19 +52,10 @@ whatsmy/
 
 See [architecture.md](https://github.com/whatsmycli/docs) for detailed documentation.
 
-## Contributing
+## Documentation
 
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to contribute to this project.
-
-### Quick Links
-- [Code of Conduct](CODE_OF_CONDUCT.md)
-- [Plugin API Documentation](https://github.com/whatsmycli/docs) - Complete plugin development guide
-- [Troubleshooting Guide](https://github.com/whatsmycli/docs) - Common issues and solutions
-- [Release Process](RELEASE.md) - How to create releases
-
-## Related
-
-- **[plugins](https://github.com/whatsmycli/plugins)** - Plugin repository
+- **[docs](https://github.com/whatsmycli/docs)** - Plugin API, troubleshooting, architecture
+- **[plugins](https://github.com/whatsmycli/plugins)** - Available plugins
 - **[plugin-template](https://github.com/whatsmycli/plugin-template)** - Create plugins
 
 ## License
