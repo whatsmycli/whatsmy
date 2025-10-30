@@ -62,6 +62,7 @@ set(SOURCES
     src/whatsmy.cpp
     src/backend/plugin_loader.cpp
     src/backend/plugin_validator.cpp
+    src/backend/plugin_manager.cpp
     src/helpers/output.cpp
     src/helpers/error.cpp
 )

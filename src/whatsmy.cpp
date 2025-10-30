@@ -4,11 +4,13 @@
 
 #include "whatsmy/whatsmy.h"
 #include "whatsmy/plugin_loader.h"
+#include "whatsmy/plugin_manager.h"
 #include "whatsmy/helpers.h"
 #include <iostream>
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <cstdlib>
 
 namespace whatsmy {
 
@@ -79,6 +81,13 @@ void show_help() {
               << "\nCOMMANDS:\n"
               << "  help                      Show this help message\n"
               << "  version                   Show version information\n"
+              << "\nPLUGIN MANAGEMENT:\n"
+              << "  plugin list               List all available plugins\n"
+              << "  plugin installed          Show installed plugins\n"
+              << "  plugin install <name>     Install a plugin\n"
+              << "  plugin remove <name>      Remove a plugin\n"
+              << "  plugin update <name>      Update a plugin\n"
+              << "  plugin search <term>      Search for plugins\n"
               << "\nOPTIONS:\n"
               << "  -h, --help       Show this help message\n"
               << "  -v, --version    Show version information\n"
@@ -87,6 +96,8 @@ void show_help() {
               << "  " << APP_NAME << " gpu                   Display GPU information\n"
               << "  " << APP_NAME << " cpu                   Display CPU information\n"
               << "  " << APP_NAME << " --debug gpu           Debug GPU plugin loading\n"
+              << "  " << APP_NAME << " plugin list           See available plugins\n"
+              << "  " << APP_NAME << " plugin install cpu    Install CPU plugin\n"
               << "\nENVIRONMENT VARIABLES:\n"
               << "  WHATSMY_DEBUG=1           Enable debug output\n"
               << "  WHATSMY_PLUGIN_DIR=<dir>  Override plugin directory\n"
@@ -132,6 +143,108 @@ int run(int argc, char* argv[]) {
     if (command == "version" || command == "--version" || command == "-v") {
         show_version();
         return static_cast<int>(ExitCode::SUCCESS);
+    }
+    
+    // Handle plugin management commands
+    if (command == "plugin") {
+        if (argc < 3) {
+            helpers::output::print_error("'plugin' command requires a subcommand");
+            std::cout << "\nAvailable subcommands:\n"
+                      << "  list               List all available plugins\n"
+                      << "  installed          Show installed plugins\n"
+                      << "  install <name>     Install a plugin\n"
+                      << "  remove <name>      Remove a plugin\n"
+                      << "  update <name>      Update a plugin\n"
+                      << "  search <term>      Search for plugins\n"
+                      << "\nTry: " << APP_NAME << " plugin list\n";
+            return static_cast<int>(ExitCode::INVALID_ARGS);
+        }
+        
+        std::string subcommand = argv[2];
+        
+        // Get plugin directory
+        const char* plugin_dir_env = std::getenv("WHATSMY_PLUGIN_DIR");
+        std::string plugin_dir = plugin_dir_env ? plugin_dir_env : "/usr/lib/whatsmy/plugins";
+        
+        if (subcommand == "list") {
+            auto plugins = plugin_manager::fetch_plugin_list();
+            if (plugins.empty()) {
+                helpers::output::print_error("Failed to fetch plugin list");
+                return static_cast<int>(ExitCode::PLUGIN_LOAD_ERROR);
+            }
+            plugin_manager::display_plugin_list(plugins);
+            return static_cast<int>(ExitCode::SUCCESS);
+        }
+        
+        else if (subcommand == "installed") {
+            auto installed = plugin_manager::get_installed_plugins(plugin_dir);
+            plugin_manager::display_installed_plugins(installed, plugin_dir);
+            return static_cast<int>(ExitCode::SUCCESS);
+        }
+        
+        else if (subcommand == "install") {
+            if (argc < 4) {
+                helpers::output::print_error("'plugin install' requires a plugin name");
+                std::cout << "Usage: " << APP_NAME << " plugin install <name>\n";
+                return static_cast<int>(ExitCode::INVALID_ARGS);
+            }
+            std::string plugin_name = argv[3];
+            bool success = plugin_manager::install_plugin(plugin_name, plugin_dir);
+            return success ? static_cast<int>(ExitCode::SUCCESS) 
+                          : static_cast<int>(ExitCode::PLUGIN_LOAD_ERROR);
+        }
+        
+        else if (subcommand == "remove") {
+            if (argc < 4) {
+                helpers::output::print_error("'plugin remove' requires a plugin name");
+                std::cout << "Usage: " << APP_NAME << " plugin remove <name>\n";
+                return static_cast<int>(ExitCode::INVALID_ARGS);
+            }
+            std::string plugin_name = argv[3];
+            bool success = plugin_manager::remove_plugin(plugin_name, plugin_dir);
+            return success ? static_cast<int>(ExitCode::SUCCESS) 
+                          : static_cast<int>(ExitCode::PLUGIN_LOAD_ERROR);
+        }
+        
+        else if (subcommand == "update") {
+            if (argc < 4) {
+                helpers::output::print_error("'plugin update' requires a plugin name");
+                std::cout << "Usage: " << APP_NAME << " plugin update <name>\n";
+                return static_cast<int>(ExitCode::INVALID_ARGS);
+            }
+            std::string plugin_name = argv[3];
+            bool success = plugin_manager::update_plugin(plugin_name, plugin_dir);
+            return success ? static_cast<int>(ExitCode::SUCCESS) 
+                          : static_cast<int>(ExitCode::PLUGIN_LOAD_ERROR);
+        }
+        
+        else if (subcommand == "search") {
+            if (argc < 4) {
+                helpers::output::print_error("'plugin search' requires a search term");
+                std::cout << "Usage: " << APP_NAME << " plugin search <term>\n";
+                return static_cast<int>(ExitCode::INVALID_ARGS);
+            }
+            std::string query = argv[3];
+            auto plugins = plugin_manager::fetch_plugin_list();
+            if (plugins.empty()) {
+                helpers::output::print_error("Failed to fetch plugin list");
+                return static_cast<int>(ExitCode::PLUGIN_LOAD_ERROR);
+            }
+            auto results = plugin_manager::search_plugins(query, plugins);
+            if (results.empty()) {
+                std::cout << "No plugins found matching '" << query << "'\n";
+            } else {
+                std::cout << "\nSearch results for '" << query << "':\n";
+                plugin_manager::display_plugin_list(results);
+            }
+            return static_cast<int>(ExitCode::SUCCESS);
+        }
+        
+        else {
+            helpers::output::print_error("Unknown plugin subcommand: " + subcommand);
+            std::cout << "Try: " << APP_NAME << " plugin list\n";
+            return static_cast<int>(ExitCode::INVALID_ARGS);
+        }
     }
     
     // Handle debug flag (skip it if it's the first argument)

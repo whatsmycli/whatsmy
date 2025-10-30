@@ -11,6 +11,7 @@ add_executable(unit_tests
     ${CMAKE_SOURCE_DIR}/src/whatsmy.cpp
     ${CMAKE_SOURCE_DIR}/src/backend/plugin_loader.cpp
     ${CMAKE_SOURCE_DIR}/src/backend/plugin_validator.cpp
+    ${CMAKE_SOURCE_DIR}/src/backend/plugin_manager.cpp
     ${CMAKE_SOURCE_DIR}/src/helpers/output.cpp
     ${CMAKE_SOURCE_DIR}/src/helpers/error.cpp
 )
@@ -51,6 +52,7 @@ add_executable(integration_tests
     ${CMAKE_SOURCE_DIR}/src/whatsmy.cpp
     ${CMAKE_SOURCE_DIR}/src/backend/plugin_loader.cpp
     ${CMAKE_SOURCE_DIR}/src/backend/plugin_validator.cpp
+    ${CMAKE_SOURCE_DIR}/src/backend/plugin_manager.cpp
     ${CMAKE_SOURCE_DIR}/src/helpers/output.cpp
     ${CMAKE_SOURCE_DIR}/src/helpers/error.cpp
 )

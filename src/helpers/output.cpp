@@ -175,6 +175,10 @@ void print_error(const std::string& message) {
     std::cerr << colorize("Error: ", Color::RED) << message << std::endl;
 }
 
+void print_heading(const std::string& message) {
+    std::cout << stylize(colorize(message, Color::CYAN), Style::BOLD) << std::endl;
+}
+
 std::string align_text(const std::string& text, size_t width, Alignment alignment) {
     if (text.length() >= width) {
         return text;

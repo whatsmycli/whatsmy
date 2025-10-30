@@ -123,6 +123,11 @@ namespace output {
      * Print error message to stderr (red)
      */
     void print_error(const std::string& message);
+    
+    /**
+     * Print heading (bold, cyan)
+     */
+    void print_heading(const std::string& message);
 
     /**
      * Align text within a specified width
