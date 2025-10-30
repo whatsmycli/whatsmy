@@ -43,8 +43,14 @@ protected:
     }
     
     // Helper to check if we have internet connectivity
+    // Try to fetch plugin list - if it works, we have internet
     bool has_internet() {
-        return system("curl -s -m 2 https://raw.githubusercontent.com > /dev/null 2>&1") == 0;
+        try {
+            auto plugins = whatsmy::plugin_manager::fetch_plugin_list();
+            return !plugins.empty();
+        } catch (...) {
+            return false;
+        }
     }
     
     // Helper to find a plugin compatible with current platform

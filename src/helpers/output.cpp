@@ -164,7 +164,12 @@ void print_info(const std::string& message) {
 }
 
 void print_success(const std::string& message) {
+#ifdef _WIN32
+    // Use simple "[OK]" on Windows for better compatibility
+    std::cout << colorize("[OK] ", Color::GREEN) << message << std::endl;
+#else
     std::cout << colorize("✓ ", Color::GREEN) << message << std::endl;
+#endif
 }
 
 void print_warning(const std::string& message) {

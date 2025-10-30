@@ -321,6 +321,37 @@ DownloadResult download_plugin(const std::string& plugin_name,
 bool install_plugin(const std::string& plugin_name, const std::string& plugin_dir) {
     helpers::output::print_info("Installing plugin: " + plugin_name);
     
+    // Check if plugin directory is writable
+    fs::path base_dir(plugin_dir);
+    if (fs::exists(base_dir)) {
+        // Check if we can write to the directory
+#ifndef _WIN32
+        if (access(base_dir.c_str(), W_OK) != 0) {
+            helpers::output::print_error("Permission denied: Cannot write to plugin directory");
+            std::cout << "\nPlugin directory: " << base_dir.generic_string() << "\n";
+            std::cout << "\nTo fix this, try one of the following:\n";
+            std::cout << "  1. Run with sudo: " << helpers::output::colorize("sudo whatsmy plugin install " + plugin_name, helpers::output::Color::GREEN) << "\n";
+            std::cout << "  2. Change directory permissions: " << helpers::output::colorize("sudo chmod -R 775 " + base_dir.generic_string(), helpers::output::Color::GREEN) << "\n";
+            std::cout << "  3. Set a user-writable plugin directory:\n";
+            std::cout << "     " << helpers::output::colorize("export WHATSMY_PLUGIN_DIR=~/.local/lib/whatsmy/plugins", helpers::output::Color::GREEN) << "\n";
+            std::cout << "     " << helpers::output::colorize("mkdir -p ~/.local/lib/whatsmy/plugins", helpers::output::Color::GREEN) << "\n";
+            return false;
+        }
+#endif
+    } else {
+        // Try to create the base directory to check permissions
+        try {
+            fs::create_directories(base_dir);
+        } catch (const std::exception& e) {
+            helpers::output::print_error("Failed to create plugin directory: " + std::string(e.what()));
+#ifndef _WIN32
+            std::cout << "\nTry running with sudo: " << helpers::output::colorize("sudo whatsmy plugin install " + plugin_name, helpers::output::Color::GREEN) << "\n";
+            std::cout << "Or set a user-writable plugin directory with WHATSMY_PLUGIN_DIR environment variable.\n";
+#endif
+            return false;
+        }
+    }
+    
     // Fetch plugin list to get metadata
     auto plugins = fetch_plugin_list();
     if (plugins.empty()) {
@@ -394,7 +425,8 @@ bool install_plugin(const std::string& plugin_name, const std::string& plugin_di
 #endif
     
     helpers::output::print_success("Plugin '" + plugin_name + "' installed successfully");
-    std::cout << "Location: " << plugin_path << "\n";
+    // Use generic_string() for consistent path display across platforms
+    std::cout << "Location: " << plugin_path.generic_string() << "\n";
     
     return true;
 }
@@ -509,7 +541,12 @@ void display_plugin_list(const std::vector<PluginInfo>& plugins) {
     
     // Create table
     helpers::output::Table table;
+    // Use SIMPLE border style on Windows for better compatibility
+#ifdef _WIN32
+    table.set_border_style(helpers::output::BorderStyle::SIMPLE);
+#else
     table.set_border_style(helpers::output::BorderStyle::ROUNDED);
+#endif
     
     // Add header
     table.add_row({"Name", "Version", "Description", "Platforms"});
@@ -548,7 +585,12 @@ void display_installed_plugins(const std::vector<std::string>& plugin_names,
     
     // Create table
     helpers::output::Table table;
+    // Use SIMPLE border style on Windows for better compatibility
+#ifdef _WIN32
+    table.set_border_style(helpers::output::BorderStyle::SIMPLE);
+#else
     table.set_border_style(helpers::output::BorderStyle::ROUNDED);
+#endif
     
     // Add header
     table.add_row({"Name", "Location"});

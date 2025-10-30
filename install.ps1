@@ -15,25 +15,25 @@ $PluginDirUser = "$env:LOCALAPPDATA\whatsmy\plugins"
 # Functions
 function Write-Info {
     param($Message)
-    Write-Host "ℹ " -ForegroundColor Blue -NoNewline
+    Write-Host "[INFO] " -ForegroundColor Blue -NoNewline
     Write-Host $Message
 }
 
 function Write-Success {
     param($Message)
-    Write-Host "✓ " -ForegroundColor Green -NoNewline
+    Write-Host "[OK] " -ForegroundColor Green -NoNewline
     Write-Host $Message
 }
 
 function Write-Warning {
     param($Message)
-    Write-Host "⚠ " -ForegroundColor Yellow -NoNewline
+    Write-Host "[WARN] " -ForegroundColor Yellow -NoNewline
     Write-Host $Message
 }
 
 function Write-Error {
     param($Message)
-    Write-Host "✗ " -ForegroundColor Red -NoNewline
+    Write-Host "[ERROR] " -ForegroundColor Red -NoNewline
     Write-Host $Message
 }
 
