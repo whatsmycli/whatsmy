@@ -10,7 +10,13 @@
 #include <algorithm>
 #include <thread>
 #include <chrono>
-#include <unistd.h>
+#ifdef _WIN32
+    #include <process.h>
+    #define getpid _getpid
+    #define setenv(name, value, overwrite) _putenv_s(name, value)
+#else
+    #include <unistd.h>
+#endif
 
 namespace fs = std::filesystem;
 
@@ -20,7 +26,7 @@ protected:
     
     void SetUp() override {
         // Create temporary plugin directory for testing
-        temp_plugin_dir = fs::temp_directory_path() / ("whatsmy_test_" + std::to_string(getpid()));
+        temp_plugin_dir = (fs::temp_directory_path() / ("whatsmy_test_" + std::to_string(getpid()))).string();
         fs::create_directories(temp_plugin_dir);
         
         // Set environment variable to use temp directory

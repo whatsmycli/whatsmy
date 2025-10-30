@@ -274,7 +274,8 @@ std::vector<std::string> get_installed_plugins(const std::string& plugin_dir) {
             
             // Check if the plugin has a binary for the current platform
             std::string binary_name = get_platform_binary_name();
-            std::string binary_path = entry.path() / binary_name;
+            fs::path binary_path_obj = entry.path() / binary_name;
+            std::string binary_path = binary_path_obj.string();
             
             if (fs::exists(binary_path)) {
                 installed.push_back(plugin_name);
