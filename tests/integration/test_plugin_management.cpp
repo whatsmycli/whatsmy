@@ -14,6 +14,7 @@
     #include <process.h>
     #define getpid _getpid
     #define setenv(name, value, overwrite) _putenv_s(name, value)
+    #define unsetenv(name) _putenv_s(name, "")
 #else
     #include <unistd.h>
 #endif
