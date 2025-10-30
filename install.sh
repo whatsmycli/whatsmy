@@ -211,12 +211,40 @@ download_and_install() {
     print_info "Extracting archive..."
     tar -xzf "$TMP_DIR/$ARCHIVE_NAME" -C "$TMP_DIR"
     
-    # Install binary
+    # Find the binary in the extracted archive
     print_info "Installing binary to $INSTALL_DIR..."
-    if [ "$INSTALL_MODE" = "system" ] && [ "$(id -u)" -ne 0 ]; then
-        sudo install -m 755 "$TMP_DIR/bin/$BINARY_NAME" "$INSTALL_DIR/"
+    
+    # Try multiple possible locations for the binary
+    BINARY_SOURCE=""
+    
+    # Location 1: Standard bin/ directory
+    if [ -f "$TMP_DIR/bin/$BINARY_NAME" ]; then
+        BINARY_SOURCE="$TMP_DIR/bin/$BINARY_NAME"
+    # Location 2: Inside version-named subdirectory (e.g., whatsmy-1.0.0-linux-x64/bin/whatsmy)
+    elif [ -f "$TMP_DIR"/whatsmy-*-*/bin/$BINARY_NAME ]; then
+        BINARY_SOURCE=$(find "$TMP_DIR" -type f -name "$BINARY_NAME" -path "*/bin/*" | head -n 1)
+    # Location 3: Root of archive
+    elif [ -f "$TMP_DIR/$BINARY_NAME" ]; then
+        BINARY_SOURCE="$TMP_DIR/$BINARY_NAME"
+    # Location 4: Recursive search as fallback
     else
-        install -m 755 "$TMP_DIR/bin/$BINARY_NAME" "$INSTALL_DIR/"
+        BINARY_SOURCE=$(find "$TMP_DIR" -type f -name "$BINARY_NAME" | head -n 1)
+    fi
+    
+    if [ -z "$BINARY_SOURCE" ] || [ ! -f "$BINARY_SOURCE" ]; then
+        print_error "Could not find $BINARY_NAME in archive"
+        print_info "Archive contents:"
+        find "$TMP_DIR" -type f
+        exit 1
+    fi
+    
+    print_info "Found binary at: $BINARY_SOURCE"
+    
+    # Install the binary
+    if [ "$INSTALL_MODE" = "system" ] && [ "$(id -u)" -ne 0 ]; then
+        sudo install -m 755 "$BINARY_SOURCE" "$INSTALL_DIR/"
+    else
+        install -m 755 "$BINARY_SOURCE" "$INSTALL_DIR/"
     fi
     print_success "Binary installed to $INSTALL_DIR/$BINARY_NAME"
     
