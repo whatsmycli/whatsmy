@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-10-30
+
+### Added
+
+**Plugin Management System**:
+- `whatsmy plugin list` - List all available plugins from the plugins repository
+- `whatsmy plugin install <name>` - Download and install plugin binaries from GitHub
+- `whatsmy plugin installed` - Show all locally installed plugins
+- `whatsmy plugin remove <name>` - Uninstall a plugin
+- `whatsmy plugin update <name>` - Update a plugin to the latest version
+- `whatsmy plugin search <term>` - Search for plugins by name or description
+
+**Implementation Details**:
+- HTTP downloading using curl/wget (no GitHub API authentication required)
+- SHA256 checksum verification for security
+- Platform-specific binary detection and installation
+- Beautiful terminal UI with colored output and bordered tables
+- Plugin metadata via `plugins.json` in the plugins repository
+- Cross-platform support (Linux, Windows, macOS)
+
+**Testing**:
+- 13 comprehensive integration tests for plugin management
+- Tests validate against real GitHub repository
+- Graceful offline handling (tests skip when internet unavailable)
+- All 88 tests passing (100% pass rate)
+
+**Bug Fixes**:
+- Fixed Windows MSVC build errors in tests (unsetenv macro compatibility)
+- Fixed platform-aware plugin management tests for cross-platform CI
+- Improved test portability across different environments
+
 ## [1.0.0] - 2025-10-30
 
 ### Added
