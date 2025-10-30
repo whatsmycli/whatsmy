@@ -48,6 +48,7 @@ gtest_discover_tests(unit_tests)
 add_executable(integration_tests
     integration/test_e2e.cpp
     integration/test_plugin_execution.cpp
+    integration/test_plugin_management.cpp
     # Source files needed for testing (exclude main.cpp)
     ${CMAKE_SOURCE_DIR}/src/whatsmy.cpp
     ${CMAKE_SOURCE_DIR}/src/backend/plugin_loader.cpp
