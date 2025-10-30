@@ -96,8 +96,9 @@ Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for gu
 
 ### Quick Links
 - [Code of Conduct](CODE_OF_CONDUCT.md)
-- [Plugin API Documentation](https://github.com/whatsmycli/whatsmy/blob/main/docs/plugin-api.md)
-- [Troubleshooting Guide](https://github.com/whatsmycli/whatsmy/blob/main/docs/troubleshooting.md)
+- [Plugin API Documentation](https://github.com/whatsmycli/docs) - Complete plugin development guide
+- [Troubleshooting Guide](https://github.com/whatsmycli/docs) - Common issues and solutions
+- [Release Process](RELEASE.md) - How to create releases
 
 ## Related
 
