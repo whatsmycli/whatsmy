@@ -39,6 +39,19 @@ protected:
     bool has_internet() {
         return system("curl -s -m 2 https://raw.githubusercontent.com > /dev/null 2>&1") == 0;
     }
+    
+    // Helper to find a plugin compatible with current platform
+    std::string find_compatible_plugin() {
+        auto plugins = whatsmy::plugin_manager::fetch_plugin_list();
+        std::string current_platform = whatsmy::plugin_manager::get_platform_name();
+        
+        for (const auto& plugin : plugins) {
+            if (std::find(plugin.platforms.begin(), plugin.platforms.end(), current_platform) != plugin.platforms.end()) {
+                return plugin.name;
+            }
+        }
+        return "";  // No compatible plugin found
+    }
 };
 
 // Test: Fetch plugin list from real repository
@@ -121,20 +134,25 @@ TEST_F(PluginManagementTest, InstallPluginFromRepository) {
         GTEST_SKIP() << "Skipping test: No internet connection";
     }
     
-    // Try to install gpu plugin
-    bool success = whatsmy::plugin_manager::install_plugin("gpu", temp_plugin_dir);
+    // Find a plugin compatible with current platform
+    std::string plugin_name = find_compatible_plugin();
+    if (plugin_name.empty()) {
+        GTEST_SKIP() << "No plugins available for current platform";
+    }
+    
+    bool success = whatsmy::plugin_manager::install_plugin(plugin_name, temp_plugin_dir);
     
     EXPECT_TRUE(success) << "Plugin installation should succeed";
     
     // Check that plugin was installed
     auto installed = whatsmy::plugin_manager::get_installed_plugins(temp_plugin_dir);
     EXPECT_EQ(installed.size(), 1) << "Should have one installed plugin";
-    EXPECT_EQ(installed[0], "gpu") << "Installed plugin should be 'gpu'";
+    EXPECT_EQ(installed[0], plugin_name) << "Installed plugin should be '" << plugin_name << "'";
     
     // Verify binary exists
     std::string platform = whatsmy::plugin_manager::get_platform_name();
     std::string binary_name = whatsmy::plugin_manager::get_platform_binary_name();
-    fs::path binary_path = fs::path(temp_plugin_dir) / "gpu" / binary_name;
+    fs::path binary_path = fs::path(temp_plugin_dir) / plugin_name / binary_name;
     
     EXPECT_TRUE(fs::exists(binary_path)) << "Plugin binary should exist after installation";
     EXPECT_GT(fs::file_size(binary_path), 0) << "Plugin binary should not be empty";
@@ -162,8 +180,14 @@ TEST_F(PluginManagementTest, RemoveInstalledPlugin) {
         GTEST_SKIP() << "Skipping test: No internet connection";
     }
     
+    // Find a plugin compatible with current platform
+    std::string plugin_name = find_compatible_plugin();
+    if (plugin_name.empty()) {
+        GTEST_SKIP() << "No plugins available for current platform";
+    }
+    
     // First install a plugin
-    bool install_success = whatsmy::plugin_manager::install_plugin("gpu", temp_plugin_dir);
+    bool install_success = whatsmy::plugin_manager::install_plugin(plugin_name, temp_plugin_dir);
     ASSERT_TRUE(install_success) << "Plugin installation should succeed for test setup";
     
     // Verify it's installed
@@ -171,7 +195,7 @@ TEST_F(PluginManagementTest, RemoveInstalledPlugin) {
     ASSERT_EQ(installed_before.size(), 1) << "Should have one installed plugin before removal";
     
     // Remove the plugin
-    bool remove_success = whatsmy::plugin_manager::remove_plugin("gpu", temp_plugin_dir);
+    bool remove_success = whatsmy::plugin_manager::remove_plugin(plugin_name, temp_plugin_dir);
     EXPECT_TRUE(remove_success) << "Plugin removal should succeed";
     
     // Verify it's gone
@@ -179,7 +203,7 @@ TEST_F(PluginManagementTest, RemoveInstalledPlugin) {
     EXPECT_EQ(installed_after.size(), 0) << "Should have no installed plugins after removal";
     
     // Verify directory was removed
-    fs::path plugin_dir = fs::path(temp_plugin_dir) / "gpu";
+    fs::path plugin_dir = fs::path(temp_plugin_dir) / plugin_name;
     EXPECT_FALSE(fs::exists(plugin_dir)) << "Plugin directory should be removed";
 }
 
@@ -197,26 +221,32 @@ TEST_F(PluginManagementTest, UpdatePlugin) {
         GTEST_SKIP() << "Skipping test: No internet connection";
     }
     
+    // Find a plugin compatible with current platform
+    std::string plugin_name = find_compatible_plugin();
+    if (plugin_name.empty()) {
+        GTEST_SKIP() << "No plugins available for current platform";
+    }
+    
     // First install a plugin
-    bool install_success = whatsmy::plugin_manager::install_plugin("gpu", temp_plugin_dir);
+    bool install_success = whatsmy::plugin_manager::install_plugin(plugin_name, temp_plugin_dir);
     ASSERT_TRUE(install_success) << "Plugin installation should succeed for test setup";
     
     // Get the binary modification time
     std::string binary_name = whatsmy::plugin_manager::get_platform_binary_name();
-    fs::path binary_path = fs::path(temp_plugin_dir) / "gpu" / binary_name;
+    fs::path binary_path = fs::path(temp_plugin_dir) / plugin_name / binary_name;
     auto mtime_before = fs::last_write_time(binary_path);
     
     // Wait a moment to ensure different timestamp
     std::this_thread::sleep_for(std::chrono::seconds(1));
     
     // Update the plugin
-    bool update_success = whatsmy::plugin_manager::update_plugin("gpu", temp_plugin_dir);
+    bool update_success = whatsmy::plugin_manager::update_plugin(plugin_name, temp_plugin_dir);
     EXPECT_TRUE(update_success) << "Plugin update should succeed";
     
     // Verify plugin is still installed
     auto installed = whatsmy::plugin_manager::get_installed_plugins(temp_plugin_dir);
     EXPECT_EQ(installed.size(), 1) << "Should still have one installed plugin after update";
-    EXPECT_EQ(installed[0], "gpu") << "Installed plugin should still be 'gpu'";
+    EXPECT_EQ(installed[0], plugin_name) << "Installed plugin should still be '" << plugin_name << "'";
     
     // Binary should exist
     EXPECT_TRUE(fs::exists(binary_path)) << "Plugin binary should exist after update";
@@ -259,15 +289,28 @@ TEST_F(PluginManagementTest, MultiplePluginInstallations) {
     auto available = whatsmy::plugin_manager::fetch_plugin_list();
     ASSERT_GT(available.size(), 0) << "Need at least one plugin for this test";
     
-    // Install first available plugin
-    std::string plugin_name = available[0].name;
-    bool success = whatsmy::plugin_manager::install_plugin(plugin_name, temp_plugin_dir);
+    // Get current platform
+    std::string current_platform = whatsmy::plugin_manager::get_platform_name();
+    
+    // Find plugins that support current platform
+    std::vector<std::string> compatible_plugins;
+    for (const auto& plugin : available) {
+        if (std::find(plugin.platforms.begin(), plugin.platforms.end(), current_platform) != plugin.platforms.end()) {
+            compatible_plugins.push_back(plugin.name);
+        }
+    }
+    
+    if (compatible_plugins.empty()) {
+        GTEST_SKIP() << "No plugins available for platform: " << current_platform;
+    }
+    
+    // Install first compatible plugin
+    bool success = whatsmy::plugin_manager::install_plugin(compatible_plugins[0], temp_plugin_dir);
     EXPECT_TRUE(success) << "First plugin installation should succeed";
     
-    // If there's a second plugin, try installing it too
-    if (available.size() > 1) {
-        std::string plugin_name2 = available[1].name;
-        bool success2 = whatsmy::plugin_manager::install_plugin(plugin_name2, temp_plugin_dir);
+    // If there's a second compatible plugin, try installing it too
+    if (compatible_plugins.size() > 1) {
+        bool success2 = whatsmy::plugin_manager::install_plugin(compatible_plugins[1], temp_plugin_dir);
         EXPECT_TRUE(success2) << "Second plugin installation should succeed";
         
         // Verify both are installed
@@ -282,16 +325,22 @@ TEST_F(PluginManagementTest, PluginDirectoryCreation) {
         GTEST_SKIP() << "Skipping test: No internet connection";
     }
     
+    // Find a plugin compatible with current platform
+    std::string plugin_name = find_compatible_plugin();
+    if (plugin_name.empty()) {
+        GTEST_SKIP() << "No plugins available for current platform";
+    }
+    
     // Remove temp directory to test creation
     fs::remove_all(temp_plugin_dir);
     ASSERT_FALSE(fs::exists(temp_plugin_dir)) << "Temp directory should not exist before test";
     
     // Try to install plugin (should create directory)
-    bool success = whatsmy::plugin_manager::install_plugin("gpu", temp_plugin_dir);
+    bool success = whatsmy::plugin_manager::install_plugin(plugin_name, temp_plugin_dir);
     EXPECT_TRUE(success) << "Plugin installation should succeed and create directories";
     
     // Verify directories were created
     EXPECT_TRUE(fs::exists(temp_plugin_dir)) << "Base plugin directory should be created";
-    EXPECT_TRUE(fs::exists(fs::path(temp_plugin_dir) / "gpu")) << "Plugin subdirectory should be created";
+    EXPECT_TRUE(fs::exists(fs::path(temp_plugin_dir) / plugin_name)) << "Plugin subdirectory should be created";
 }
 
