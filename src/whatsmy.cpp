@@ -74,10 +74,8 @@ namespace {
 } // anonymous namespace
 
 void show_help() {
-    std::cout << APP_NAME << " - System Information Tool\n"
-              << "\nUsage:\n"
-              << "  " << APP_NAME << " <component>           Run plugin for component\n"
-              << "  " << APP_NAME << " --debug <component>   Run with verbose debug output\n"
+    std::cout << "Usage:\n"
+              << "  " << APP_NAME << " <plugin name>           Run plugin\n"
               << "\nCOMMANDS:\n"
               << "  help                      Show this help message\n"
               << "  version                   Show version information\n"
@@ -88,23 +86,6 @@ void show_help() {
               << "  plugin remove <name>      Remove a plugin\n"
               << "  plugin update <name>      Update a plugin\n"
               << "  plugin search <term>      Search for plugins\n"
-              << "\nOPTIONS:\n"
-              << "  -h, --help       Show this help message\n"
-              << "  -v, --version    Show version information\n"
-              << "  -d, --debug      Enable verbose debug output\n"
-              << "\nEXAMPLES:\n"
-              << "  " << APP_NAME << " gpu                   Display GPU information\n"
-              << "  " << APP_NAME << " cpu                   Display CPU information\n"
-              << "  " << APP_NAME << " --debug gpu           Debug GPU plugin loading\n"
-              << "  " << APP_NAME << " plugin list           See available plugins\n"
-              << "  " << APP_NAME << " plugin install cpu    Install CPU plugin\n"
-              << "\nENVIRONMENT VARIABLES:\n"
-              << "  WHATSMY_DEBUG=1           Enable debug output\n"
-              << "  WHATSMY_PLUGIN_DIR=<dir>  Override plugin directory\n"
-              << "\nFor more help:\n"
-              << "  • Documentation: https://github.com/enxov/whatsmycli\n"
-              << "  • Troubleshooting: https://github.com/enxov/whatsmycli/blob/main/docs/troubleshooting.md\n"
-              << "  • Plugin API: https://github.com/enxov/whatsmycli/blob/main/docs/plugin-api.md\n"
               << std::endl;
 }
 
