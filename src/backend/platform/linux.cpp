@@ -70,7 +70,7 @@ public:
             }
             
             std::cout << "\nFor more help, run with: WHATSMY_DEBUG=1 whatsmy <component>\n";
-            std::cout << "Or see: https://github.com/enxov/whatsmycli/blob/main/docs/troubleshooting.md\n";
+            std::cout << "Or use: whatsmy --debug <component>\n";
             return 1;
         }
 
@@ -97,7 +97,7 @@ public:
             std::cout << "  • Plugin may be outdated or incompatible\n";
             std::cout << "  • Make sure plugin was built with 'extern \"C\"' for plugin_run\n";
             std::cout << "\nFor plugin developers:\n";
-            std::cout << "  See: https://github.com/enxov/whatsmycli/blob/main/docs/plugin-api.md\n";
+            std::cout << "  See: https://github.com/whatsmycli/plugin-template\n";
             
             dlclose(handle);
             return 1;

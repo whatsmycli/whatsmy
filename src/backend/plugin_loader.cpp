@@ -118,7 +118,7 @@ int PluginLoader::load_and_run(const std::string& plugin_name) {
                 std::cout << "   You may need to install plugins or set WHATSMY_PLUGIN_DIR\n";
             }
             
-            std::cout << "\nFor help, see: https://github.com/enxov/whatsmycli/blob/main/docs/troubleshooting.md\n";
+            std::cout << "\nFor help, enable debug mode: whatsmy --debug <plugin-name>\n";
             return 2; // PLUGIN_NOT_FOUND
         }
     } catch (const std::filesystem::filesystem_error& e) {
@@ -159,7 +159,7 @@ int PluginLoader::load_and_run(const std::string& plugin_name) {
             }
             
             std::cout << "\nThis plugin may not support your platform yet.\n";
-            std::cout << "For help, see: https://github.com/enxov/whatsmycli/blob/main/docs/troubleshooting.md\n";
+            std::cout << "For help, enable debug mode: whatsmy --debug <plugin-name>\n";
             return 3; // PLUGIN_LOAD_ERROR
         }
     } catch (const std::filesystem::filesystem_error& e) {

@@ -50,11 +50,10 @@ whatsmy/
 └── CMakeLists.txt       # Build config
 ```
 
-See [architecture.md](https://github.com/whatsmycli/docs) for detailed documentation.
+See [plugin-template](https://github.com/whatsmycli/plugin-template) for plugin development.
 
 ## Documentation
 
-- **[docs](https://github.com/whatsmycli/docs)** - Plugin API, troubleshooting, architecture
 - **[plugins](https://github.com/whatsmycli/plugins)** - Available plugins
 - **[plugin-template](https://github.com/whatsmycli/plugin-template)** - Create plugins
 
