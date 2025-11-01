@@ -226,11 +226,10 @@ TEST_F(E2ETest, HelpOutputStructure) {
     
     EXPECT_EQ(result, static_cast<int>(whatsmy::ExitCode::SUCCESS));
     
-    // Should have all major sections
+    // Should have essential sections (simplified help)
     EXPECT_THAT(output, ::testing::HasSubstr("Usage:"));
     EXPECT_THAT(output, ::testing::HasSubstr("COMMANDS"));
-    EXPECT_THAT(output, ::testing::HasSubstr("ENVIRONMENT"));
-    EXPECT_THAT(output, ::testing::HasSubstr("EXAMPLES"));
+    EXPECT_THAT(output, ::testing::HasSubstr("PLUGIN MANAGEMENT"));
 }
 
 // Test: Version output structure
@@ -325,12 +324,12 @@ TEST_F(E2ETest, HelpMessageIsHelpful) {
     
     EXPECT_EQ(result, static_cast<int>(whatsmy::ExitCode::SUCCESS));
     
-    // Should contain all essential information
-    EXPECT_THAT(output, ::testing::HasSubstr("whatsmy <component>"));
+    // Should contain essential information (simplified help)
+    EXPECT_THAT(output, ::testing::HasSubstr("whatsmy <plugin name>"));
     EXPECT_THAT(output, ::testing::HasSubstr("help"));
     EXPECT_THAT(output, ::testing::HasSubstr("version"));
-    EXPECT_THAT(output, ::testing::HasSubstr("WHATSMY_PLUGIN_DIR"));
-    EXPECT_THAT(output, ::testing::HasSubstr("WHATSMY_DEBUG"));
+    EXPECT_THAT(output, ::testing::HasSubstr("plugin list"));
+    EXPECT_THAT(output, ::testing::HasSubstr("plugin install"));
 }
 
 // Test: Error messages are clear

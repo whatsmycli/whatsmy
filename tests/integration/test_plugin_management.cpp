@@ -97,26 +97,26 @@ TEST_F(PluginManagementTest, SearchForPlugin) {
     auto all_plugins = whatsmy::plugin_manager::fetch_plugin_list();
     ASSERT_GT(all_plugins.size(), 0) << "Need plugins to test search";
     
-    // Search for "gpu" (we know this exists)
-    auto results = whatsmy::plugin_manager::search_plugins("gpu", all_plugins);
+    // Search for "example" (we know this exists in the repository)
+    auto results = whatsmy::plugin_manager::search_plugins("example", all_plugins);
     
-    EXPECT_GT(results.size(), 0) << "Should find at least one result for 'gpu'";
+    EXPECT_GT(results.size(), 0) << "Should find at least one result for 'example'";
     
-    // Verify the found plugin contains "gpu" in name or description
-    bool found_gpu = false;
+    // Verify the found plugin contains "example" in name or description
+    bool found_example = false;
     for (const auto& plugin : results) {
         std::string name_lower = plugin.name;
         std::string desc_lower = plugin.description;
         std::transform(name_lower.begin(), name_lower.end(), name_lower.begin(), ::tolower);
         std::transform(desc_lower.begin(), desc_lower.end(), desc_lower.begin(), ::tolower);
         
-        if (name_lower.find("gpu") != std::string::npos || 
-            desc_lower.find("gpu") != std::string::npos) {
-            found_gpu = true;
+        if (name_lower.find("example") != std::string::npos || 
+            desc_lower.find("example") != std::string::npos) {
+            found_example = true;
             break;
         }
     }
-    EXPECT_TRUE(found_gpu) << "Search results should contain GPU-related plugins";
+    EXPECT_TRUE(found_example) << "Search results should contain example plugin";
 }
 
 // Test: Search for non-existent plugin
