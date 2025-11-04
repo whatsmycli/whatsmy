@@ -10,6 +10,13 @@
 #include <string>
 #include <cstdlib>
 
+// Platform-specific bullet character for better Windows console compatibility
+#ifdef _WIN32
+    #define BULLET "  - "
+#else
+    #define BULLET "  • "
+#endif
+
 namespace whatsmy {
 namespace backend {
 
@@ -92,8 +99,8 @@ int PluginLoader::load_and_run(const std::string& plugin_name, int argc, char* a
             
             // Provide helpful diagnostics
             std::cout << "\nDiagnostics:\n";
-            std::cout << "  • Plugin directory searched: " << plugin_dir << "\n";
-            std::cout << "  • Expected plugin folder: " << plugin_folder.string() << "\n";
+            std::cout << BULLET << "Plugin directory searched: " << plugin_dir << "\n";
+            std::cout << BULLET << "Expected plugin folder: " << plugin_folder.string() << "\n";
             
             // List available plugins if plugin directory exists
             if (std::filesystem::exists(plugin_dir)) {
@@ -102,7 +109,7 @@ int PluginLoader::load_and_run(const std::string& plugin_name, int argc, char* a
                 try {
                     for (const auto& entry : std::filesystem::directory_iterator(plugin_dir)) {
                         if (entry.is_directory()) {
-                            std::cout << "  • " << entry.path().filename().string() << "\n";
+                            std::cout << BULLET << entry.path().filename().string() << "\n";
                             found_any = true;
                         }
                     }
@@ -135,9 +142,9 @@ int PluginLoader::load_and_run(const std::string& plugin_name, int argc, char* a
             
             // Provide helpful diagnostics
             std::cout << "\nDiagnostics:\n";
-            std::cout << "  • Plugin: " << plugin_name << "\n";
-            std::cout << "  • Platform: " << platform_name << "\n";
-            std::cout << "  • Expected binary: " << plugin_path.string() << "\n";
+            std::cout << BULLET << "Plugin: " << plugin_name << "\n";
+            std::cout << BULLET << "Platform: " << platform_name << "\n";
+            std::cout << BULLET << "Expected binary: " << plugin_path.string() << "\n";
             
             // List available platform binaries for this plugin
             std::cout << "\nAvailable builds for '" << plugin_name << "':\n";
@@ -146,7 +153,7 @@ int PluginLoader::load_and_run(const std::string& plugin_name, int argc, char* a
                 for (const auto& entry : std::filesystem::directory_iterator(plugin_folder)) {
                     if (entry.is_regular_file()) {
                         std::string filename = entry.path().filename().string();
-                        std::cout << "  • " << filename << "\n";
+                        std::cout << BULLET << filename << "\n";
                         found_any = true;
                     }
                 }

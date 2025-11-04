@@ -597,7 +597,8 @@ void display_installed_plugins(const std::vector<std::string>& plugin_names,
     
     // Add plugins
     for (const auto& name : plugin_names) {
-        std::string location = (fs::path(plugin_dir) / name).string();
+        // Use generic_string() for consistent path display across platforms
+        std::string location = (fs::path(plugin_dir) / name).generic_string();
         table.add_row({name, location});
     }
     

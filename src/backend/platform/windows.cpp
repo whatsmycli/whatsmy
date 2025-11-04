@@ -10,6 +10,13 @@
 #include "whatsmy/helpers.h"
 #include "whatsmy/plugin_validator.h"
 
+// Platform-specific bullet character for better Windows console compatibility
+#ifdef _WIN32
+    #define BULLET "  - "
+#else
+    #define BULLET "  • "
+#endif
+
 namespace whatsmy {
 namespace backend {
 namespace platform {

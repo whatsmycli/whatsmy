@@ -290,10 +290,21 @@ verify_installation() {
         # Show version
         "$BINARY_NAME" version
     else
-        print_error "Installation verification failed"
-        print_info "Binary installed but not found in PATH"
-        print_info "You may need to restart your shell or add $INSTALL_DIR to your PATH"
-        exit 1
+        print_warning "Binary installed but not found in PATH"
+        echo ""
+        echo "The installation was successful, but '$BINARY_NAME' is not in your PATH yet."
+        echo ""
+        if [ "$INSTALL_MODE" = "user" ]; then
+            echo "To use whatsmy, either:"
+            echo "  1. Restart your shell (recommended)"
+            echo "  2. Run: source ~/.bashrc  (or ~/.zshrc, depending on your shell)"
+            echo "  3. Or run with full path: $INSTALL_DIR/$BINARY_NAME"
+        else
+            echo "You may need to restart your shell for PATH changes to take effect."
+        fi
+        echo ""
+        # Exit with success since installation completed successfully
+        # The PATH not being updated yet is not an installation failure
     fi
 }
 
