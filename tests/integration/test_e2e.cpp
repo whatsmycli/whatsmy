@@ -84,7 +84,7 @@ TEST_F(E2ETest, VersionCommandWorkflow) {
     
     EXPECT_EQ(result, static_cast<int>(whatsmy::ExitCode::SUCCESS));
     EXPECT_THAT(output, ::testing::HasSubstr("whatsmy"));
-    EXPECT_THAT(output, ::testing::HasSubstr("1.2.1"));
+    EXPECT_THAT(output, ::testing::HasSubstr("1.2.2"));
     EXPECT_THAT(output, ::testing::HasSubstr("Copyright"));
     EXPECT_THAT(output, ::testing::HasSubstr("enXov"));
 }
@@ -131,7 +131,7 @@ TEST_F(E2ETest, VersionFlagVariations) {
         
         EXPECT_EQ(result, static_cast<int>(whatsmy::ExitCode::SUCCESS));
         EXPECT_THAT(output, ::testing::HasSubstr("whatsmy"));
-        EXPECT_THAT(output, ::testing::HasSubstr("1.2.1"));
+        EXPECT_THAT(output, ::testing::HasSubstr("1.2.2"));
     }
 }
 
@@ -240,7 +240,7 @@ TEST_F(E2ETest, VersionOutputStructure) {
     EXPECT_EQ(result, static_cast<int>(whatsmy::ExitCode::SUCCESS));
     
     // Should include version number and copyright
-    EXPECT_THAT(output, ::testing::HasSubstr("1.2.1"));
+    EXPECT_THAT(output, ::testing::HasSubstr("1.2.2"));
     EXPECT_THAT(output, ::testing::HasSubstr("Copyright"));
     EXPECT_THAT(output, ::testing::HasSubstr("2025"));
 }
