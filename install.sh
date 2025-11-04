@@ -268,13 +268,38 @@ update_path() {
     fi
     
     if [ "$INSTALL_MODE" = "user" ]; then
-        print_warning "$INSTALL_DIR is not in your PATH"
-        echo ""
-        echo "Add the following line to your shell configuration file:"
-        echo "  (~/.bashrc, ~/.zshrc, ~/.profile, etc.)"
-        echo ""
-        echo "  export PATH=\"$INSTALL_DIR:\$PATH\""
-        echo ""
+        # Detect which shell config file to update
+        local shell_config=""
+        local shell_name=$(basename "$SHELL")
+        
+        case "$shell_name" in
+            zsh)
+                shell_config="$HOME/.zshrc"
+                ;;
+            bash)
+                shell_config="$HOME/.bashrc"
+                ;;
+            fish)
+                shell_config="$HOME/.config/fish/config.fish"
+                ;;
+            *)
+                shell_config="$HOME/.profile"
+                ;;
+        esac
+        
+        # Check if PATH is already in the config file
+        if [ -f "$shell_config" ] && grep -q "export PATH=\"$INSTALL_DIR:\$PATH\"" "$shell_config" 2>/dev/null; then
+            print_success "PATH already configured in $shell_config"
+            print_info "You may need to restart your shell or run: source $shell_config"
+        else
+            # Add PATH to shell config
+            print_info "Adding $INSTALL_DIR to PATH in $shell_config"
+            echo "" >> "$shell_config"
+            echo "# Added by whatsmycli installer" >> "$shell_config"
+            echo "export PATH=\"$INSTALL_DIR:\$PATH\"" >> "$shell_config"
+            print_success "PATH updated in $shell_config"
+            print_info "Run 'source $shell_config' or restart your shell to apply changes"
+        fi
     fi
 }
 

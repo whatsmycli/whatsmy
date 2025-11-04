@@ -24,8 +24,7 @@ public:
      * @return Exit code from plugin (0 on success)
      */
     static int load_and_run(const std::string& plugin_name, int argc, char* argv[]);
-
-private:
+    
     /**
      * Get plugin directory path based on platform
      */

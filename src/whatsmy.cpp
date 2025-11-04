@@ -143,9 +143,9 @@ int run(int argc, char* argv[]) {
         
         std::string subcommand = argv[2];
         
-        // Get plugin directory
+        // Get plugin directory (use platform-specific default)
         const char* plugin_dir_env = std::getenv("WHATSMY_PLUGIN_DIR");
-        std::string plugin_dir = plugin_dir_env ? plugin_dir_env : "/usr/lib/whatsmy/plugins";
+        std::string plugin_dir = plugin_dir_env ? plugin_dir_env : backend::PluginLoader::get_plugin_directory();
         
         if (subcommand == "list") {
             auto plugins = plugin_manager::fetch_plugin_list();
