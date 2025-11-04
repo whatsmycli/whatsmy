@@ -5,6 +5,14 @@
 #ifndef WHATSMY_PLUGIN_API_H
 #define WHATSMY_PLUGIN_API_H
 
+// Windows DLL export macro
+// When building plugins on Windows, use __declspec(dllexport) to export symbols
+#ifdef _WIN32
+    #define WHATSMY_PLUGIN_EXPORT __declspec(dllexport)
+#else
+    #define WHATSMY_PLUGIN_EXPORT
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -34,7 +42,7 @@ extern "C" {
  * Example implementation:
  * 
  * extern "C" {
- *     int plugin_run(int argc, char* argv[]) {
+ *     WHATSMY_PLUGIN_EXPORT int plugin_run(int argc, char* argv[]) {
  *         std::cout << "Plugin called with " << argc << " arguments" << std::endl;
  *         
  *         // Print all arguments
@@ -53,7 +61,7 @@ extern "C" {
  *     }
  * }
  */
-int plugin_run(int argc, char* argv[]);
+WHATSMY_PLUGIN_EXPORT int plugin_run(int argc, char* argv[]);
 
 #ifdef __cplusplus
 }
