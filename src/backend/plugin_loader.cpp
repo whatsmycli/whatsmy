@@ -16,7 +16,7 @@ namespace backend {
 // Forward declaration of platform-specific function
 // This will be implemented in platform-specific source files
 namespace platform {
-    int load_and_execute_plugin(const std::string& plugin_path);
+    int load_and_execute_plugin(const std::string& plugin_path, int argc, char* argv[]);
 }
 
 std::string PluginLoader::get_plugin_directory() {
@@ -45,7 +45,7 @@ std::string PluginLoader::get_library_extension() {
     #endif
 }
 
-int PluginLoader::load_and_run(const std::string& plugin_name) {
+int PluginLoader::load_and_run(const std::string& plugin_name, int argc, char* argv[]) {
     // 1. Get plugin directory
     std::string plugin_dir = get_plugin_directory();
     
@@ -190,7 +190,7 @@ int PluginLoader::load_and_run(const std::string& plugin_name) {
     helpers::error::debug_log("Plugin validation successful");
     
     // 7. Load and execute the plugin using platform-specific implementation
-    int result = platform::load_and_execute_plugin(plugin_path.string());
+    int result = platform::load_and_execute_plugin(plugin_path.string(), argc, argv);
     
     // 8. Validate return code
     if (!PluginValidator::validate_return_code(result)) {

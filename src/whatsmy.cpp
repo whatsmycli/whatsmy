@@ -252,7 +252,18 @@ int run(int argc, char* argv[]) {
     // Route to plugin system
     helpers::error::debug_log("Attempting to load plugin: " + command);
     
-    int plugin_result = backend::PluginLoader::load_and_run(command);
+    // Prepare arguments for plugin
+    // argv[0] = "whatsmy"
+    // argv[1] = plugin name (e.g., "example")
+    // argv[2+] = additional arguments
+    // 
+    // We want to pass to plugin:
+    // plugin_argv[0] = plugin name
+    // plugin_argv[1+] = additional arguments
+    //
+    // So plugin gets: argc-1 args starting from argv[1]
+    
+    int plugin_result = backend::PluginLoader::load_and_run(command, argc - 1, argv + 1);
     
     // If plugin execution succeeded, return its exit code
     if (plugin_result == 0) {

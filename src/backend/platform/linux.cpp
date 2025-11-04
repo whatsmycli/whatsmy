@@ -24,9 +24,11 @@ public:
      * Load and execute a plugin on Linux
      * 
      * @param plugin_path Full path to the plugin .so file
+     * @param argc Number of arguments to pass to the plugin
+     * @param argv Array of argument strings to pass to the plugin
      * @return Exit code from plugin (0 on success, non-zero on error)
      */
-    static int load_and_execute(const std::string& plugin_path) {
+    static int load_and_execute(const std::string& plugin_path, int argc, char* argv[]) {
         // Check if plugin file exists
         if (!std::filesystem::exists(plugin_path)) {
             helpers::output::print_error("Plugin file not found: " + plugin_path);
@@ -78,7 +80,7 @@ public:
         dlerror();
 
         // Resolve the plugin_run symbol
-        typedef int (*plugin_run_func)();
+        typedef int (*plugin_run_func)(int, char**);
         plugin_run_func plugin_run = reinterpret_cast<plugin_run_func>(
             dlsym(handle, "plugin_run")
         );
@@ -119,8 +121,8 @@ public:
         // Execute the plugin
         int result = 0;
         try {
-            helpers::error::debug_log("Executing plugin_run()");
-            result = plugin_run();
+            helpers::error::debug_log("Executing plugin_run() with " + std::to_string(argc) + " arguments");
+            result = plugin_run(argc, argv);
             helpers::error::debug_log("Plugin returned exit code: " + std::to_string(result));
         } catch (const std::exception& e) {
             helpers::output::print_error("Plugin crashed during execution");
@@ -164,8 +166,8 @@ public:
 };
 
 // Export the function for use by plugin_loader.cpp
-int load_and_execute_plugin(const std::string& plugin_path) {
-    return LinuxPluginLoader::load_and_execute(plugin_path);
+int load_and_execute_plugin(const std::string& plugin_path, int argc, char* argv[]) {
+    return LinuxPluginLoader::load_and_execute(plugin_path, argc, argv);
 }
 
 /**

@@ -16,12 +16,14 @@ namespace backend {
 class PluginLoader {
 public:
     /**
-     * Load and execute a plugin
+     * Load and execute a plugin with arguments
      * 
      * @param plugin_name Name of the plugin to load
+     * @param argc Number of arguments to pass to the plugin
+     * @param argv Array of argument strings to pass to the plugin
      * @return Exit code from plugin (0 on success)
      */
-    static int load_and_run(const std::string& plugin_name);
+    static int load_and_run(const std::string& plugin_name, int argc, char* argv[]);
 
 private:
     /**
