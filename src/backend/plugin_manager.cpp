@@ -333,8 +333,8 @@ bool install_plugin(const std::string& plugin_name, const std::string& plugin_di
             std::cout << "  1. Run with sudo: " << helpers::output::colorize("sudo whatsmy plugin install " + plugin_name, helpers::output::Color::GREEN) << "\n";
             std::cout << "  2. Change directory permissions: " << helpers::output::colorize("sudo chmod -R 775 " + base_dir.generic_string(), helpers::output::Color::GREEN) << "\n";
             std::cout << "  3. Set a user-writable plugin directory:\n";
-            std::cout << "     " << helpers::output::colorize("export WHATSMY_PLUGIN_DIR=~/.local/lib/whatsmy/plugins", helpers::output::Color::GREEN) << "\n";
-            std::cout << "     " << helpers::output::colorize("mkdir -p ~/.local/lib/whatsmy/plugins", helpers::output::Color::GREEN) << "\n";
+            std::cout << "     " << helpers::output::colorize("export WHATSMY_PLUGIN_DIR=~/.local/share/whatsmy/plugins", helpers::output::Color::GREEN) << "\n";
+            std::cout << "     " << helpers::output::colorize("mkdir -p ~/.local/share/whatsmy/plugins", helpers::output::Color::GREEN) << "\n";
             return false;
         }
 #endif

@@ -9,6 +9,10 @@
 #include <iostream>
 #include <string>
 #include <cstdlib>
+#ifndef _WIN32
+#include <unistd.h>
+#include <pwd.h>
+#endif
 
 // Platform-specific bullet character for better Windows console compatibility
 #ifdef _WIN32
@@ -35,10 +39,21 @@ std::string PluginLoader::get_plugin_directory() {
     
     #ifdef _WIN32
         return "C:\\Program Files\\whatsmy\\plugins\\";
-    #elif __APPLE__
-        return "/usr/local/lib/whatsmy/plugins/";
     #else
-        return "/usr/lib/whatsmy/plugins/";
+        // Unix-like systems (Linux and macOS): Use user-writable directory
+        // Follows XDG Base Directory Specification: ~/.local/share/whatsmy/plugins/
+        const char* home_dir = std::getenv("HOME");
+        if (!home_dir) {
+            // Fallback: try to get home directory from passwd
+            struct passwd* pw = getpwuid(getuid());
+            if (pw && pw->pw_dir) {
+                home_dir = pw->pw_dir;
+            } else {
+                // Last resort: use /tmp (shouldn't happen in normal circumstances)
+                return "/tmp/whatsmy/plugins/";
+            }
+        }
+        return std::string(home_dir) + "/.local/share/whatsmy/plugins/";
     #endif
 }
 
@@ -60,8 +75,10 @@ int PluginLoader::load_and_run(const std::string& plugin_name, int argc, char* a
     std::string extension = get_library_extension();
     
     // 3. Construct full plugin path
-    // Plugins are organized as: /usr/lib/whatsmy/plugins/<plugin-name>/<platform>.<ext>
-    // For example: /usr/lib/whatsmy/plugins/gpu/linux.so
+    // Plugins are organized as: <plugin-dir>/<plugin-name>/<platform>.<ext>
+    // On Unix-like systems: ~/.local/share/whatsmy/plugins/<plugin-name>/<platform>.<ext>
+    // On Windows: C:\Program Files\whatsmy\plugins\<plugin-name>\<platform>.<ext>
+    // For example: ~/.local/share/whatsmy/plugins/gpu/linux.so
     
     std::string platform_name;
     #ifdef _WIN32

@@ -18,7 +18,7 @@ BINARY_NAME="whatsmy"
 INSTALL_DIR_SYSTEM="/usr/local/bin"
 INSTALL_DIR_USER="$HOME/.local/bin"
 PLUGIN_DIR_SYSTEM="/usr/local/lib/whatsmy/plugins"
-PLUGIN_DIR_USER="$HOME/.local/lib/whatsmy/plugins"
+PLUGIN_DIR_USER="$HOME/.local/share/whatsmy/plugins"
 
 # Functions
 print_info() {
