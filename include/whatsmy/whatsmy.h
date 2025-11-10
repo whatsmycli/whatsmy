@@ -13,7 +13,7 @@ namespace whatsmy {
 /**
  * Application version information
  */
-constexpr const char* VERSION = "1.2.2";
+constexpr const char* VERSION = "1.2.3";
 constexpr const char* APP_NAME = "whatsmy";
 
 /**

@@ -104,7 +104,7 @@ TEST_F(CommandParserTest, VersionCommandDisplaysVersion) {
     
     EXPECT_EQ(result, static_cast<int>(whatsmy::ExitCode::SUCCESS));
     EXPECT_THAT(output, ::testing::HasSubstr("whatsmy"));
-    EXPECT_THAT(output, ::testing::HasSubstr("1.2.2"));
+    EXPECT_THAT(output, ::testing::HasSubstr("1.2.3"));
     EXPECT_THAT(output, ::testing::HasSubstr("enXov"));
 }
 
@@ -117,7 +117,7 @@ TEST_F(CommandParserTest, VersionFlagWorks) {
     
     EXPECT_EQ(result, static_cast<int>(whatsmy::ExitCode::SUCCESS));
     EXPECT_THAT(output, ::testing::HasSubstr("whatsmy"));
-    EXPECT_THAT(output, ::testing::HasSubstr("1.2.2"));
+    EXPECT_THAT(output, ::testing::HasSubstr("1.2.3"));
 }
 
 // Test: -v flag should work
