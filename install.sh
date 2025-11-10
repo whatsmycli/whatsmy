@@ -71,8 +71,6 @@ detect_platform() {
             exit 1
             ;;
     esac
-    
-    print_info "Detected platform: $PLATFORM-$ARCH"
 }
 
 check_requirements() {
@@ -87,59 +85,14 @@ check_requirements() {
         print_error "Neither curl nor wget found. Please install one of them."
         exit 1
     fi
-    
-    print_success "Download tool found: ${DOWNLOAD_CMD%% *}"
 }
 
 determine_install_mode() {
-    # Check if we can write to system directories
-    if [ -w "$INSTALL_DIR_SYSTEM" ] || [ "$(id -u)" -eq 0 ]; then
-        INSTALL_MODE="system"
-        INSTALL_DIR="$INSTALL_DIR_SYSTEM"
-        PLUGIN_DIR="$PLUGIN_DIR_SYSTEM"
-        print_info "Installing system-wide to $INSTALL_DIR"
-    else
-        # Check if running in non-interactive mode (piped from curl/wget)
-        if [ ! -t 0 ]; then
-            # Non-interactive mode: default to user installation
-            print_warning "No write permission to $INSTALL_DIR_SYSTEM"
-            print_info "Running in non-interactive mode, defaulting to user installation"
-            INSTALL_MODE="user"
-            INSTALL_DIR="$INSTALL_DIR_USER"
-            PLUGIN_DIR="$PLUGIN_DIR_USER"
-            mkdir -p "$INSTALL_DIR"
-            print_info "Installing for current user to $INSTALL_DIR"
-        else
-            # Interactive mode: ask user preference
-            print_warning "No write permission to $INSTALL_DIR_SYSTEM"
-            echo ""
-            echo "Installation options:"
-            echo "  1) Install for current user only (no sudo required)"
-            echo "  2) Install system-wide (requires sudo)"
-            echo ""
-            read -p "Choose installation mode [1/2]: " choice
-            
-            case "$choice" in
-                1)
-                    INSTALL_MODE="user"
-                    INSTALL_DIR="$INSTALL_DIR_USER"
-                    PLUGIN_DIR="$PLUGIN_DIR_USER"
-                    mkdir -p "$INSTALL_DIR"
-                    print_info "Installing for current user to $INSTALL_DIR"
-                    ;;
-                2)
-                    INSTALL_MODE="system"
-                    INSTALL_DIR="$INSTALL_DIR_SYSTEM"
-                    PLUGIN_DIR="$PLUGIN_DIR_SYSTEM"
-                    print_info "Installing system-wide to $INSTALL_DIR (will use sudo)"
-                    ;;
-                *)
-                    print_error "Invalid choice"
-                    exit 1
-                    ;;
-            esac
-        fi
-    fi
+    # Always install to user directory (no root required)
+    INSTALL_MODE="user"
+    INSTALL_DIR="$INSTALL_DIR_USER"
+    PLUGIN_DIR="$PLUGIN_DIR_USER"
+    mkdir -p "$INSTALL_DIR"
 }
 
 get_latest_version() {
@@ -185,34 +138,28 @@ download_and_install() {
     fi
     print_success "Downloaded $ARCHIVE_NAME"
     
-    # Download and verify checksum
-    print_info "Verifying checksum..."
+    # Download and verify checksum silently
     if ! $DOWNLOAD_CMD "$CHECKSUM_URL" $DOWNLOAD_OUTPUT "$TMP_DIR/checksum.txt"; then
-        print_warning "Could not download checksum file, skipping verification"
+        : # Skip checksum verification if not available
     else
         cd "$TMP_DIR"
         if command -v sha256sum &> /dev/null; then
-            if ! echo "$(cat checksum.txt)" | sha256sum -c -; then
+            if ! echo "$(cat checksum.txt)" | sha256sum -c - &> /dev/null; then
                 print_error "Checksum verification failed"
                 exit 1
             fi
         elif command -v shasum &> /dev/null; then
-            if ! shasum -a 256 -c checksum.txt; then
+            if ! shasum -a 256 -c checksum.txt &> /dev/null; then
                 print_error "Checksum verification failed"
                 exit 1
             fi
-        else
-            print_warning "No checksum tool found, skipping verification"
         fi
-        print_success "Checksum verified"
     fi
     
-    # Extract archive
-    print_info "Extracting archive..."
+    # Extract archive silently
     tar -xzf "$TMP_DIR/$ARCHIVE_NAME" -C "$TMP_DIR"
     
     # Find the binary in the extracted archive
-    print_info "Installing binary to $INSTALL_DIR..."
     
     # Try multiple possible locations for the binary
     BINARY_SOURCE=""
@@ -238,68 +185,50 @@ download_and_install() {
         exit 1
     fi
     
-    print_info "Found binary at: $BINARY_SOURCE"
-    
     # Install the binary
-    if [ "$INSTALL_MODE" = "system" ] && [ "$(id -u)" -ne 0 ]; then
-        sudo install -m 755 "$BINARY_SOURCE" "$INSTALL_DIR/"
-    else
-        install -m 755 "$BINARY_SOURCE" "$INSTALL_DIR/"
-    fi
-    print_success "Binary installed to $INSTALL_DIR/$BINARY_NAME"
+    install -m 755 "$BINARY_SOURCE" "$INSTALL_DIR/"
     
     # Create plugin directory
     print_info "Creating plugin directory..."
-    if [ "$INSTALL_MODE" = "system" ] && [ "$(id -u)" -ne 0 ]; then
-        sudo mkdir -p "$PLUGIN_DIR"
-        sudo chmod 755 "$PLUGIN_DIR"
-    else
-        mkdir -p "$PLUGIN_DIR"
-        chmod 755 "$PLUGIN_DIR"
-    fi
+    mkdir -p "$PLUGIN_DIR"
+    chmod 755 "$PLUGIN_DIR"
     print_success "Plugin directory created at $PLUGIN_DIR"
 }
 
 update_path() {
     # Check if install directory is in PATH
     if echo "$PATH" | grep -q "$INSTALL_DIR"; then
-        print_success "Installation directory is already in PATH"
         return
     fi
     
-    if [ "$INSTALL_MODE" = "user" ]; then
-        # Detect which shell config file to update
-        local shell_config=""
-        local shell_name=$(basename "$SHELL")
-        
-        case "$shell_name" in
-            zsh)
-                shell_config="$HOME/.zshrc"
-                ;;
-            bash)
-                shell_config="$HOME/.bashrc"
-                ;;
-            fish)
-                shell_config="$HOME/.config/fish/config.fish"
-                ;;
-            *)
-                shell_config="$HOME/.profile"
-                ;;
-        esac
-        
-        # Check if PATH is already in the config file
-        if [ -f "$shell_config" ] && grep -q "export PATH=\"$INSTALL_DIR:\$PATH\"" "$shell_config" 2>/dev/null; then
-            print_success "PATH already configured in $shell_config"
-            print_info "You may need to restart your shell or run: source $shell_config"
-        else
-            # Add PATH to shell config
-            print_info "Adding $INSTALL_DIR to PATH in $shell_config"
-            echo "" >> "$shell_config"
-            echo "# Added by whatsmycli installer" >> "$shell_config"
-            echo "export PATH=\"$INSTALL_DIR:\$PATH\"" >> "$shell_config"
-            print_success "PATH updated in $shell_config"
-            print_info "Run 'source $shell_config' or restart your shell to apply changes"
-        fi
+    # Detect which shell config file to update
+    local shell_config=""
+    local shell_name=$(basename "$SHELL")
+    
+    case "$shell_name" in
+        zsh)
+            shell_config="$HOME/.zshrc"
+            ;;
+        bash)
+            shell_config="$HOME/.bashrc"
+            ;;
+        fish)
+            shell_config="$HOME/.config/fish/config.fish"
+            ;;
+        *)
+            shell_config="$HOME/.profile"
+            ;;
+    esac
+    
+    # Check if PATH is already in the config file
+    if [ -f "$shell_config" ] && grep -q "export PATH=\"$INSTALL_DIR:\$PATH\"" "$shell_config" 2>/dev/null; then
+        print_info "You may need to restart your shell or run: source $shell_config"
+    else
+        # Add PATH to shell config silently
+        echo "" >> "$shell_config"
+        echo "# Added by whatsmycli installer" >> "$shell_config"
+        echo "export PATH=\"$INSTALL_DIR:\$PATH\"" >> "$shell_config"
+        print_info "Run 'source $shell_config' or restart your shell to apply changes"
     fi
 }
 

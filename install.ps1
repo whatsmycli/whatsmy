@@ -71,54 +71,10 @@ function Get-LatestVersion {
 }
 
 function Select-InstallMode {
-    $isAdmin = Test-Administrator
-    
-    if ($isAdmin) {
-        $script:InstallMode = "system"
-        $script:InstallDir = $InstallDirSystem
-        $script:PluginDir = $PluginDirSystem
-        Write-Info "Installing system-wide to $InstallDir"
-    }
-    else {
-        # Check if running in non-interactive mode (piped execution)
-        if ([Environment]::UserInteractive -and -not [Console]::IsInputRedirected) {
-            # Interactive mode: ask user
-            Write-Warning "Not running as Administrator"
-            Write-Host ""
-            Write-Host "Installation options:"
-            Write-Host "  1) Install for current user only (no admin required)"
-            Write-Host "  2) Exit and restart as Administrator"
-            Write-Host ""
-            
-            $choice = Read-Host "Choose installation mode [1/2]"
-            
-            switch ($choice) {
-                "1" {
-                    $script:InstallMode = "user"
-                    $script:InstallDir = $InstallDirUser
-                    $script:PluginDir = $PluginDirUser
-                    Write-Info "Installing for current user to $InstallDir"
-                }
-                "2" {
-                    Write-Info "Please restart this script as Administrator"
-                    exit 0
-                }
-                default {
-                    Write-Error "Invalid choice"
-                    exit 1
-                }
-            }
-        }
-        else {
-            # Non-interactive mode: default to user installation
-            Write-Warning "Not running as Administrator"
-            Write-Info "Running in non-interactive mode, defaulting to user installation"
-            $script:InstallMode = "user"
-            $script:InstallDir = $InstallDirUser
-            $script:PluginDir = $PluginDirUser
-            Write-Info "Installing for current user to $InstallDir"
-        }
-    }
+    # Always install to user directory (no admin required)
+    $script:InstallMode = "user"
+    $script:InstallDir = $InstallDirUser
+    $script:PluginDir = $PluginDirUser
 }
 
 function Download-AndInstall {
@@ -140,8 +96,7 @@ function Download-AndInstall {
         Invoke-WebRequest -Uri $downloadUrl -OutFile $archivePath
         Write-Success "Downloaded $archiveName"
         
-        # Download and verify checksum
-        Write-Info "Verifying checksum..."
+        # Download and verify checksum silently
         try {
             $checksumPath = Join-Path $tempDir "checksum.txt"
             Invoke-WebRequest -Uri $checksumUrl -OutFile $checksumPath
@@ -153,25 +108,20 @@ function Download-AndInstall {
                 Write-Error "Checksum verification failed"
                 exit 1
             }
-            
-            Write-Success "Checksum verified"
         }
         catch {
-            Write-Warning "Could not verify checksum: $_"
+            # Skip checksum verification if not available
         }
         
-        # Extract archive
-        Write-Info "Extracting archive..."
+        # Extract archive silently
         Expand-Archive -Path $archivePath -DestinationPath $tempDir -Force
         
         # Create installation directory
-        Write-Info "Creating installation directory..."
         if (-not (Test-Path $InstallDir)) {
             New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
         }
         
         # Find the binary in the extracted archive
-        Write-Info "Installing binary to $InstallDir..."
         $binaryDest = Join-Path $InstallDir $BinaryName
         
         # Try multiple possible locations for the binary
@@ -185,7 +135,6 @@ function Download-AndInstall {
         $binaryFound = $false
         foreach ($path in $possiblePaths) {
             if ($path -and (Test-Path $path)) {
-                Write-Info "Found binary at: $path"
                 Copy-Item -Path $path -Destination $binaryDest -Force
                 $binaryFound = $true
                 break
@@ -198,8 +147,6 @@ function Download-AndInstall {
             Get-ChildItem -Path $tempDir -Recurse | ForEach-Object { Write-Host "  $($_.FullName)" }
             exit 1
         }
-        
-        Write-Success "Binary installed to $binaryDest"
         
         # Create plugin directory
         Write-Info "Creating plugin directory..."
@@ -221,15 +168,11 @@ function Update-Path {
     $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
     
     if ($currentPath -notlike "*$InstallDir*") {
-        Write-Info "Adding $InstallDir to PATH..."
-        
-        $target = if ($InstallMode -eq "system") { "Machine" } else { "User" }
-        $currentPath = [Environment]::GetEnvironmentVariable("Path", $target)
+        $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
         $newPath = "$currentPath;$InstallDir"
         
         try {
-            [Environment]::SetEnvironmentVariable("Path", $newPath, $target)
-            Write-Success "Added to PATH"
+            [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
             
             # Update current session PATH
             $env:Path = "$env:Path;$InstallDir"
@@ -238,9 +181,6 @@ function Update-Path {
             Write-Warning "Could not update PATH automatically"
             Write-Info "Please add $InstallDir to your PATH manually"
         }
-    }
-    else {
-        Write-Success "Installation directory is already in PATH"
     }
 }
 
