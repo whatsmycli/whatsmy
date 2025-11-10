@@ -164,23 +164,27 @@ function Download-AndInstall {
 }
 
 function Update-Path {
-    # Check if install directory is in PATH
-    $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    # Get current user PATH
+    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
     
-    if ($currentPath -notlike "*$InstallDir*") {
-        $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
-        $newPath = "$currentPath;$InstallDir"
+    # Remove any old whatsmy paths from user PATH
+    $userPath = ($userPath -split ';' | Where-Object { $_ -notlike "*whatsmy*" }) -join ';'
+    
+    # Add new install directory at the BEGINNING (so it takes precedence)
+    $newPath = "$InstallDir;$userPath"
+    
+    try {
+        [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
         
-        try {
-            [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
-            
-            # Update current session PATH
-            $env:Path = "$env:Path;$InstallDir"
-        }
-        catch {
-            Write-Warning "Could not update PATH automatically"
-            Write-Info "Please add $InstallDir to your PATH manually"
-        }
+        # Update current session PATH - rebuild it completely to ensure new path is first
+        $systemPath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+        $env:Path = "$InstallDir;$userPath;$systemPath"
+        
+        Write-Info "Updated PATH to prioritize user installation"
+    }
+    catch {
+        Write-Warning "Could not update PATH automatically"
+        Write-Info "Please add $InstallDir to your PATH manually"
     }
 }
 
@@ -189,6 +193,14 @@ function Test-Installation {
     
     $binaryPath = Join-Path $InstallDir $BinaryName
     
+    # Check for old system installation
+    $systemBinary = Join-Path $InstallDirSystem $BinaryName
+    if ((Test-Path $systemBinary) -and ($systemBinary -ne $binaryPath)) {
+        Write-Warning "Found old installation at: $InstallDirSystem"
+        Write-Info "The new version is installed at: $InstallDir"
+        Write-Info "You may want to remove the old installation to avoid conflicts"
+    }
+    
     if (Test-Path $binaryPath) {
         Write-Success "Installation verified!"
         Write-Host ""
@@ -196,13 +208,16 @@ function Test-Installation {
         Write-Host "Run 'whatsmy help' to see available commands"
         Write-Host ""
         
-        # Show version
+        # Show version from installed binary
         try {
             & $binaryPath version
         }
         catch {
             Write-Warning "Could not run binary. You may need to restart your terminal."
         }
+        
+        Write-Host ""
+        Write-Info "If 'whatsmy version' shows an old version, restart your terminal"
     }
     else {
         Write-Error "Installation verification failed"
