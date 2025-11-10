@@ -84,7 +84,7 @@ TEST_F(E2ETest, VersionCommandWorkflow) {
     
     EXPECT_EQ(result, static_cast<int>(whatsmy::ExitCode::SUCCESS));
     EXPECT_THAT(output, ::testing::HasSubstr("whatsmy"));
-    EXPECT_THAT(output, ::testing::HasSubstr("1.2.3"));
+    EXPECT_THAT(output, ::testing::HasSubstr("1.2.4"));
     EXPECT_THAT(output, ::testing::HasSubstr("Copyright"));
     EXPECT_THAT(output, ::testing::HasSubstr("enXov"));
 }
@@ -131,7 +131,7 @@ TEST_F(E2ETest, VersionFlagVariations) {
         
         EXPECT_EQ(result, static_cast<int>(whatsmy::ExitCode::SUCCESS));
         EXPECT_THAT(output, ::testing::HasSubstr("whatsmy"));
-        EXPECT_THAT(output, ::testing::HasSubstr("1.2.3"));
+        EXPECT_THAT(output, ::testing::HasSubstr("1.2.4"));
     }
 }
 
@@ -146,24 +146,24 @@ TEST_F(E2ETest, UnknownCommandErrorHandling) {
     EXPECT_THAT(error_output, ::testing::HasSubstr("not found"));
 }
 
-// Test: Typo detection and suggestion
+// Test: Typo detection shows error without suggestions
 TEST_F(E2ETest, TypoDetectionSuggestion) {
     int result = ExecuteCommand({"whatsmy", "gpo"}); // Typo for "gpu"
     std::string error_output = GetStderr();
     
     EXPECT_EQ(result, static_cast<int>(whatsmy::ExitCode::PLUGIN_NOT_FOUND));
     EXPECT_THAT(error_output, ::testing::HasSubstr("not found"));
-    EXPECT_THAT(error_output, ::testing::HasSubstr("gpu")); // Should suggest "gpu"
+    // No longer suggests similar commands (feature removed for simplicity)
 }
 
-// Test: Multiple similar commands suggestion
+// Test: Multiple similar commands shows error without suggestions
 TEST_F(E2ETest, MultipleSimilarCommandsSuggestion) {
     int result = ExecuteCommand({"whatsmy", "cp"}); // Could be "cpu"
     std::string error_output = GetStderr();
     
     EXPECT_EQ(result, static_cast<int>(whatsmy::ExitCode::PLUGIN_NOT_FOUND));
     EXPECT_THAT(error_output, ::testing::HasSubstr("not found"));
-    EXPECT_THAT(error_output, ::testing::HasSubstr("cpu")); // Should suggest "cpu"
+    // No longer suggests similar commands (feature removed for simplicity)
 }
 
 // ===== Debug Mode Tests =====
@@ -240,7 +240,7 @@ TEST_F(E2ETest, VersionOutputStructure) {
     EXPECT_EQ(result, static_cast<int>(whatsmy::ExitCode::SUCCESS));
     
     // Should include version number and copyright
-    EXPECT_THAT(output, ::testing::HasSubstr("1.2.3"));
+    EXPECT_THAT(output, ::testing::HasSubstr("1.2.4"));
     EXPECT_THAT(output, ::testing::HasSubstr("Copyright"));
     EXPECT_THAT(output, ::testing::HasSubstr("2025"));
 }

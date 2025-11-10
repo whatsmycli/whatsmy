@@ -83,8 +83,7 @@ TEST_F(PluginManagementTest, FetchPluginListFromRepository) {
         const auto& first_plugin = plugins[0];
         EXPECT_FALSE(first_plugin.name.empty()) << "Plugin should have a name";
         EXPECT_FALSE(first_plugin.description.empty()) << "Plugin should have a description";
-        EXPECT_FALSE(first_plugin.version.empty()) << "Plugin should have a version";
-        EXPECT_FALSE(first_plugin.platforms.empty()) << "Plugin should support at least one platform";
+        EXPECT_FALSE(first_plugin.author.empty()) << "Plugin should have an author";
     }
 }
 

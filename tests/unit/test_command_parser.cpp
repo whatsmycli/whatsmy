@@ -104,7 +104,7 @@ TEST_F(CommandParserTest, VersionCommandDisplaysVersion) {
     
     EXPECT_EQ(result, static_cast<int>(whatsmy::ExitCode::SUCCESS));
     EXPECT_THAT(output, ::testing::HasSubstr("whatsmy"));
-    EXPECT_THAT(output, ::testing::HasSubstr("1.2.3"));
+    EXPECT_THAT(output, ::testing::HasSubstr("1.2.4"));
     EXPECT_THAT(output, ::testing::HasSubstr("enXov"));
 }
 
@@ -117,7 +117,7 @@ TEST_F(CommandParserTest, VersionFlagWorks) {
     
     EXPECT_EQ(result, static_cast<int>(whatsmy::ExitCode::SUCCESS));
     EXPECT_THAT(output, ::testing::HasSubstr("whatsmy"));
-    EXPECT_THAT(output, ::testing::HasSubstr("1.2.3"));
+    EXPECT_THAT(output, ::testing::HasSubstr("1.2.4"));
 }
 
 // Test: -v flag should work
@@ -131,7 +131,7 @@ TEST_F(CommandParserTest, ShortVersionFlagWorks) {
     EXPECT_THAT(output, ::testing::HasSubstr("whatsmy"));
 }
 
-// Test: Unknown command should suggest similar commands
+// Test: Unknown command shows error without suggestions
 TEST_F(CommandParserTest, UnknownCommandSuggestsSimilar) {
     const char* argv[] = {"whatsmy", "gpo"}; // Typo for "gpu"
     int result = whatsmy::run(2, const_cast<char**>(argv));
@@ -140,8 +140,7 @@ TEST_F(CommandParserTest, UnknownCommandSuggestsSimilar) {
     
     EXPECT_EQ(result, static_cast<int>(whatsmy::ExitCode::PLUGIN_NOT_FOUND));
     EXPECT_THAT(output, ::testing::HasSubstr("not found"));
-    // Should suggest "gpu" as a similar command
-    EXPECT_THAT(output, ::testing::HasSubstr("gpu"));
+    // No longer suggests similar commands (feature removed for simplicity)
 }
 
 // Test: Completely invalid command should show error
