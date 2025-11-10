@@ -14,65 +14,6 @@
 
 namespace whatsmy {
 
-namespace {
-    // Common components that might be available as plugins
-    const std::vector<std::string> KNOWN_COMPONENTS = {
-        "cpu", "gpu", "ram", "disk", "os", "network", 
-        "battery", "display", "audio", "usb"
-    };
-
-    /**
-     * Calculate Levenshtein distance between two strings
-     * Used for command suggestions
-     */
-    int levenshtein_distance(const std::string& s1, const std::string& s2) {
-        const size_t len1 = s1.size(), len2 = s2.size();
-        std::vector<std::vector<int>> d(len1 + 1, std::vector<int>(len2 + 1));
-
-        for (size_t i = 0; i <= len1; ++i) d[i][0] = i;
-        for (size_t i = 0; i <= len2; ++i) d[0][i] = i;
-
-        for (size_t i = 1; i <= len1; ++i) {
-            for (size_t j = 1; j <= len2; ++j) {
-                int cost = (s1[i - 1] == s2[j - 1]) ? 0 : 1;
-                d[i][j] = std::min({
-                    d[i - 1][j] + 1,      // deletion
-                    d[i][j - 1] + 1,      // insertion
-                    d[i - 1][j - 1] + cost // substitution
-                });
-            }
-        }
-
-        return d[len1][len2];
-    }
-
-    /**
-     * Find similar commands to suggest
-     */
-    std::vector<std::string> find_similar_commands(const std::string& command) {
-        std::vector<std::pair<int, std::string>> scored_commands;
-        
-        for (const auto& known : KNOWN_COMPONENTS) {
-            int distance = levenshtein_distance(command, known);
-            // Only suggest if distance is small (3 or less)
-            if (distance <= 3) {
-                scored_commands.push_back({distance, known});
-            }
-        }
-
-        // Sort by distance (closest first)
-        std::sort(scored_commands.begin(), scored_commands.end());
-
-        // Extract just the command names
-        std::vector<std::string> suggestions;
-        for (const auto& pair : scored_commands) {
-            suggestions.push_back(pair.second);
-        }
-
-        return suggestions;
-    }
-} // anonymous namespace
-
 void show_help() {
     std::cout << "Usage:\n"
               << "  " << APP_NAME << " <plugin name>           Run plugin\n"
@@ -270,18 +211,8 @@ int run(int argc, char* argv[]) {
         return static_cast<int>(ExitCode::SUCCESS);
     }
     
-    // If plugin was not found, show suggestions before returning
+    // If plugin was not found, just return the error code
     if (plugin_result == static_cast<int>(ExitCode::PLUGIN_NOT_FOUND)) {
-        // Find and display similar commands
-        auto suggestions = find_similar_commands(command);
-        if (!suggestions.empty()) {
-            std::cerr << "\nDid you mean one of these?\n";
-            for (const auto& suggestion : suggestions) {
-                std::cerr << "  " << APP_NAME << " " << suggestion << "\n";
-            }
-            std::cerr << std::endl;
-        }
-        
         std::cerr << "Run '" << APP_NAME << " help' for available commands.\n" << std::endl;
         return plugin_result;
     }

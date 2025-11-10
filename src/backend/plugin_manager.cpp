@@ -368,20 +368,8 @@ bool install_plugin(const std::string& plugin_name, const std::string& plugin_di
         return false;
     }
     
-    const PluginInfo& plugin = *it;
-    
-    // Check if platform is supported
+    // Get current platform
     std::string platform = get_platform_name();
-    if (std::find(plugin.platforms.begin(), plugin.platforms.end(), platform) == plugin.platforms.end()) {
-        helpers::output::print_error("Plugin '" + plugin_name + "' is not available for " + platform);
-        std::cout << "Available platforms: ";
-        for (size_t i = 0; i < plugin.platforms.size(); ++i) {
-            std::cout << plugin.platforms[i];
-            if (i < plugin.platforms.size() - 1) std::cout << ", ";
-        }
-        std::cout << "\n";
-        return false;
-    }
     
     // Create plugin directory
     fs::path plugin_path = fs::path(plugin_dir) / plugin_name;
@@ -403,20 +391,6 @@ bool install_plugin(const std::string& plugin_name, const std::string& plugin_di
     if (!result.success) {
         helpers::output::print_error(result.error_message);
         return false;
-    }
-    
-    // Verify checksum if available
-    if (plugin.checksums.count(platform) > 0) {
-        std::string expected_checksum = plugin.checksums.at(platform);
-        if (expected_checksum != "sha256:placeholder" && !expected_checksum.empty()) {
-            if (!verify_checksum(dest_path, expected_checksum)) {
-                helpers::output::print_warning("Checksum verification failed for plugin '" + plugin_name + "'");
-                helpers::output::print_warning("The plugin may be corrupted or tampered with");
-                // Don't fail installation, just warn
-            } else {
-                helpers::error::log(helpers::error::Level::DEBUG, "Checksum verification passed");
-            }
-        }
     }
     
     // Set execute permissions on Unix
@@ -452,19 +426,10 @@ bool remove_plugin(const std::string& plugin_name, const std::string& plugin_dir
 }
 
 bool update_plugin(const std::string& plugin_name, const std::string& plugin_dir) {
-    // Check if plugin is installed
-    auto installed = get_installed_plugins(plugin_dir);
-    if (std::find(installed.begin(), installed.end(), plugin_name) == installed.end()) {
-        helpers::output::print_error("Plugin '" + plugin_name + "' is not installed");
-        return false;
-    }
-    
     helpers::output::print_info("Updating plugin: " + plugin_name);
     
-    // Remove and reinstall
-    if (!remove_plugin(plugin_name, plugin_dir)) {
-        return false;
-    }
+    // Remove and reinstall directly (no version check)
+    remove_plugin(plugin_name, plugin_dir);
     
     return install_plugin(plugin_name, plugin_dir);
 }
@@ -549,17 +514,11 @@ void display_plugin_list(const std::vector<PluginInfo>& plugins) {
 #endif
     
     // Add header
-    table.add_row({"Name", "Version", "Description", "Platforms"});
+    table.add_row({"Name", "Description", "Author"});
     
     // Add plugins
     for (const auto& plugin : plugins) {
-        std::string platforms;
-        for (size_t i = 0; i < plugin.platforms.size(); ++i) {
-            platforms += plugin.platforms[i];
-            if (i < plugin.platforms.size() - 1) platforms += ", ";
-        }
-        
-        table.add_row({plugin.name, plugin.version, plugin.description, platforms});
+        table.add_row({plugin.name, plugin.description, plugin.author});
     }
     
     table.print();
