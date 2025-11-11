@@ -163,24 +163,57 @@ function Download-AndInstall {
     }
 }
 
+function Remove-OldInstallations {
+    Write-Info "Checking for old installations..."
+    
+    # Common installation locations
+    $oldLocations = @(
+        "$env:ProgramFiles\whatsmy",
+        "$env:LOCALAPPDATA\whatsmy",
+        "$env:APPDATA\whatsmy"
+    )
+    
+    $removedAny = $false
+    foreach ($location in $oldLocations) {
+        if ((Test-Path $location) -and ($location -ne $InstallDir)) {
+            $oldBinary = Join-Path $location $BinaryName
+            if (Test-Path $oldBinary) {
+                Write-Info "Removing old installation from: $location"
+                try {
+                    Remove-Item -Path $location -Recurse -Force
+                    $removedAny = $true
+                }
+                catch {
+                    Write-Warning "Could not remove old installation at $location"
+                    Write-Warning "Please remove it manually to avoid conflicts"
+                }
+            }
+        }
+    }
+    
+    if ($removedAny) {
+        Write-Success "Old installations removed"
+    }
+}
+
 function Update-Path {
-    # Get current user PATH
-    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    # Check if install directory is in PATH
+    $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
     
-    # Remove any old whatsmy paths from user PATH
-    $userPath = ($userPath -split ';' | Where-Object { $_ -notlike "*whatsmy*" }) -join ';'
+    # Remove old whatsmy paths from PATH
+    $pathParts = $currentPath -split ";" | Where-Object { 
+        $_ -and ($_ -notlike "*\whatsmy*" -or $_ -eq $InstallDir)
+    }
     
-    # Add new install directory at the BEGINNING (so it takes precedence)
-    $newPath = "$InstallDir;$userPath"
+    # Add install directory at the BEGINNING of PATH (higher priority)
+    $cleanPath = ($pathParts | Where-Object { $_ -ne $InstallDir }) -join ";"
+    $newPath = "$InstallDir;$cleanPath"
     
     try {
         [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
         
-        # Update current session PATH - rebuild it completely to ensure new path is first
-        $systemPath = [Environment]::GetEnvironmentVariable("Path", "Machine")
-        $env:Path = "$InstallDir;$userPath;$systemPath"
-        
-        Write-Info "Updated PATH to prioritize user installation"
+        # Update current session PATH - also prioritize new installation
+        $env:Path = "$InstallDir;$env:Path"
     }
     catch {
         Write-Warning "Could not update PATH automatically"
@@ -192,14 +225,6 @@ function Test-Installation {
     Write-Info "Verifying installation..."
     
     $binaryPath = Join-Path $InstallDir $BinaryName
-    
-    # Check for old system installation
-    $systemBinary = Join-Path $InstallDirSystem $BinaryName
-    if ((Test-Path $systemBinary) -and ($systemBinary -ne $binaryPath)) {
-        Write-Warning "Found old installation at: $InstallDirSystem"
-        Write-Info "The new version is installed at: $InstallDir"
-        Write-Info "You may want to remove the old installation to avoid conflicts"
-    }
     
     if (Test-Path $binaryPath) {
         Write-Success "Installation verified!"
@@ -217,7 +242,30 @@ function Test-Installation {
         }
         
         Write-Host ""
-        Write-Info "If 'whatsmy version' shows an old version, restart your terminal"
+        
+        # Verify which whatsmy.exe will be used from PATH
+        try {
+            $resolvedPath = (Get-Command whatsmy -ErrorAction SilentlyContinue).Source
+            if ($resolvedPath) {
+                if ($resolvedPath -eq $binaryPath) {
+                    Write-Success "PATH is configured correctly"
+                }
+                else {
+                    Write-Warning "Windows will use whatsmy from: $resolvedPath"
+                    Write-Warning "Expected: $binaryPath"
+                    Write-Host ""
+                    Write-Host "Please restart your terminal or run:"
+                    Write-Host "  `$env:Path = `"$InstallDir;`$env:Path`""
+                }
+            }
+            else {
+                Write-Warning "whatsmy not found in PATH"
+                Write-Host "Please restart your terminal for PATH changes to take effect"
+            }
+        }
+        catch {
+            Write-Warning "Could not verify PATH configuration"
+        }
     }
     else {
         Write-Error "Installation verification failed"
@@ -233,6 +281,7 @@ function Main {
     Write-Host ""
     
     Select-InstallMode
+    Remove-OldInstallations
     $version = Get-LatestVersion
     Download-AndInstall -Version $version
     Update-Path
